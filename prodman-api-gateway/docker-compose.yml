@@ -1,0 +1,41 @@
+services:
+  gateway:
+    build: .
+    container_name: api-gateway
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+    depends_on:
+      - redis
+      - mongodb
+    networks:
+      - prodman-network
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: gateway-redis
+    ports:
+      - "6380:6379"
+    networks:
+      - prodman-network
+
+  mongodb:
+    image: mongo:7
+    container_name: gateway-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - prodman-network
+
+volumes:
+  mongo_data:
+
+networks:
+  prodman-network:
+    driver: bridge

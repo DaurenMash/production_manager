@@ -1,0 +1,34 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+
+# IDE
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Env
+.env
+.env.local
+*.env
+
+# Docker
+*.pid
+
+# Tests
+test-output/
+
+# Spring Boot
+application-*.yml.bak

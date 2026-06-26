@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.DashboardController"
+      spacing="15" style="-fx-background-color: #1e1e2f;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Text text="Dashboard" fill="yellowgreen" style="-fx-font-size: 48; -fx-font-weight: bold;"/>
+
+    <!-- KPI Cards -->
+    <HBox spacing="15" alignment="CENTER">
+        <VBox alignment="CENTER" style="-fx-background-color: #0d3430; -fx-background-radius: 10;" spacing="5" HBox.hgrow="ALWAYS">
+            <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+            <Text text="Всего станков" fill="#aaaaaa" style="-fx-font-size: 12;"/>
+            <Text fx:id="totalMachines" text="48" fill="white" style="-fx-font-size: 28; -fx-font-weight: bold;"/>
+        </VBox>
+        <VBox alignment="CENTER" style="-fx-background-color: #2ecc71; -fx-background-radius: 10;" spacing="5" HBox.hgrow="ALWAYS">
+            <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+            <Text text="Активные" fill="white" style="-fx-font-size: 12;"/>
+            <Text fx:id="activeMachines" text="42" fill="white" style="-fx-font-size: 28; -fx-font-weight: bold;"/>
+        </VBox>
+        <VBox alignment="CENTER" style="-fx-background-color: #e67e22; -fx-background-radius: 10;" spacing="5" HBox.hgrow="ALWAYS">
+            <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+            <Text text="В простое" fill="white" style="-fx-font-size: 12;"/>
+            <Text fx:id="idleMachines" text="4" fill="white" style="-fx-font-size: 28; -fx-font-weight: bold;"/>
+        </VBox>
+        <VBox alignment="CENTER" style="-fx-background-color: #e74c3c; -fx-background-radius: 10;" spacing="5" HBox.hgrow="ALWAYS">
+            <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+            <Text text="Ремонт" fill="white" style="-fx-font-size: 12;"/>
+            <Text fx:id="brokenMachines" text="2" fill="white" style="-fx-font-size: 28; -fx-font-weight: bold;"/>
+        </VBox>
+        <VBox alignment="CENTER" style="-fx-background-color: #3498db; -fx-background-radius: 10;" spacing="5" HBox.hgrow="ALWAYS">
+            <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+            <Text text="OEE" fill="white" style="-fx-font-size: 12;"/>
+            <Text fx:id="oeeValue" text="87%" fill="white" style="-fx-font-size: 28; -fx-font-weight: bold;"/>
+        </VBox>
+    </HBox>
+
+    <!-- Charts -->
+    <HBox spacing="15" VBox.vgrow="ALWAYS">
+        <!-- Pie Chart -->
+        <VBox spacing="10" style="-fx-background-color: #2d2d3f; -fx-background-radius: 10;" HBox.hgrow="ALWAYS">
+            <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+            <Text text="Статус оборудования" fill="white" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+            <PieChart fx:id="statusPieChart" title="" prefHeight="250" prefWidth="300"/>
+        </VBox>
+
+        <!-- Line Chart -->
+        <VBox spacing="10" style="-fx-background-color: #2d2d3f; -fx-background-radius: 10;" HBox.hgrow="ALWAYS">
+            <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+            <Text text="Динамика простоев" fill="white" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+            <LineChart fx:id="downtimeChart" prefHeight="250" prefWidth="400">
+                <xAxis><CategoryAxis label="Дата"/></xAxis>
+                <yAxis><NumberAxis label="Часы"/></yAxis>
+            </LineChart>
+        </VBox>
+    </HBox>
+
+    <!-- Top Problems -->
+    <VBox spacing="10" style="-fx-background-color: #2d2d3f; -fx-background-radius: 10;">
+        <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+        <Text text="Топ проблемных станков" fill="white" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+        <VBox fx:id="topProblemsContainer" spacing="5"/>
+    </VBox>
+
+</VBox>

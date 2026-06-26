@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+<?import javafx.scene.control.Tooltip?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.EmployeeManagementController"
+      spacing="15" style="-fx-background-color: #1e1e2f;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Text text="Управление работниками" fill="white" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+
+        <!-- Поиск -->
+        <TextField fx:id="searchField" promptText="Поиск по email..." prefWidth="200" style="-fx-background-radius: 5; -fx-padding: 8;">
+            <tooltip><Tooltip text="Введите email для поиска работника"/></tooltip>
+        </TextField>
+        <Button text="Найти" onAction="#searchEmployee" style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-background-radius: 5;"/>
+        <Button text="Сбросить" onAction="#clearSearch" style="-fx-background-color: #7f8c8d; -fx-text-fill: white; -fx-background-radius: 5;"/>
+
+        <Button fx:id="refreshButton" text="Обновить" onAction="#refresh" style="-fx-background-color: #0f3460; -fx-text-fill: white; -fx-background-radius: 5;"/>
+    </HBox>
+
+    <!-- Employees Table -->
+    <TableView fx:id="employeeTable" VBox.vgrow="ALWAYS" style="-fx-background-color: #2d2d3f;">
+        <columns>
+            <TableColumn fx:id="colId" text="ID" prefWidth="150"/>
+            <TableColumn fx:id="colFirstName" text="Имя" prefWidth="120"/>
+            <TableColumn fx:id="colLastName" text="Фамилия" prefWidth="120"/>
+            <TableColumn fx:id="colEmail" text="Email" prefWidth="200"/>
+            <TableColumn fx:id="colPositions" text="Должности" prefWidth="150"/>
+            <TableColumn fx:id="colStatus" text="Статус" prefWidth="100"/>
+            <TableColumn fx:id="colDepartment" text="Отдел" prefWidth="120"/>
+            <TableColumn fx:id="colPhone" text="Телефон" prefWidth="120"/>
+            <TableColumn fx:id="colActions" text="Действия" prefWidth="150"/>
+        </columns>
+    </TableView>
+
+    <!-- Form Panel -->
+    <VBox fx:id="formPanel" spacing="10" style="-fx-background-color: #2d2d3f; -fx-background-radius: 10;">
+        <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+
+        <Text text="Форма работника" fill="white" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+
+        <GridPane hgap="10" vgap="10">
+            <Label text="Имя:" GridPane.rowIndex="0" GridPane.columnIndex="0" textFill="white"/>
+            <TextField fx:id="firstNameField" GridPane.rowIndex="0" GridPane.columnIndex="1" prefWidth="200">
+                <tooltip><Tooltip text="Обязательное поле"/></tooltip>
+            </TextField>
+
+            <Label text="Фамилия:" GridPane.rowIndex="1" GridPane.columnIndex="0" textFill="white"/>
+            <TextField fx:id="lastNameField" GridPane.rowIndex="1" GridPane.columnIndex="1" prefWidth="200">
+                <tooltip><Tooltip text="Обязательное поле"/></tooltip>
+            </TextField>
+
+            <Label text="Email:" GridPane.rowIndex="2" GridPane.columnIndex="0" textFill="white"/>
+            <TextField fx:id="emailField" GridPane.rowIndex="2" GridPane.columnIndex="1" prefWidth="200">
+                <tooltip><Tooltip text="Обязательное поле. Формат: user@example.com"/></tooltip>
+            </TextField>
+
+            <Label text="Должности:" GridPane.rowIndex="3" GridPane.columnIndex="0" textFill="white"/>
+            <TextField fx:id="positionsField" GridPane.rowIndex="3" GridPane.columnIndex="1" prefWidth="200" promptText="Оператор, Инженер, ...">
+                <tooltip><Tooltip text="Укажите должности через запятую"/></tooltip>
+            </TextField>
+
+            <Label text="Статус:" GridPane.rowIndex="4" GridPane.columnIndex="0" textFill="white"/>
+            <ComboBox fx:id="statusCombo" GridPane.rowIndex="4" GridPane.columnIndex="1" prefWidth="200"/>
+
+            <Label text="Отдел:" GridPane.rowIndex="5" GridPane.columnIndex="0" textFill="white"/>
+            <TextField fx:id="departmentField" GridPane.rowIndex="5" GridPane.columnIndex="1" prefWidth="200"/>
+
+            <Label text="Телефон:" GridPane.rowIndex="6" GridPane.columnIndex="0" textFill="white"/>
+            <TextField fx:id="phoneField" GridPane.rowIndex="6" GridPane.columnIndex="1" prefWidth="200"/>
+
+            <Label text="Макс. часов в неделю:" GridPane.rowIndex="7" GridPane.columnIndex="0" textFill="white"/>
+            <TextField fx:id="maxHoursField" GridPane.rowIndex="7" GridPane.columnIndex="1" prefWidth="200" promptText="40"/>
+
+            <Label text="Предпочтительная смена:" GridPane.rowIndex="8" GridPane.columnIndex="0" textFill="white"/>
+            <ComboBox fx:id="preferredShiftCombo" GridPane.rowIndex="8" GridPane.columnIndex="1" prefWidth="200"/>
+
+            <Label text="Отпуск с:" GridPane.rowIndex="9" GridPane.columnIndex="0" textFill="white"/>
+            <DatePicker fx:id="vacationStartPicker" GridPane.rowIndex="9" GridPane.columnIndex="1" prefWidth="200"/>
+
+            <Label text="Отпуск по:" GridPane.rowIndex="10" GridPane.columnIndex="0" textFill="white"/>
+            <DatePicker fx:id="vacationEndPicker" GridPane.rowIndex="10" GridPane.columnIndex="1" prefWidth="200"/>
+
+            <Label text="Больничный с:" GridPane.rowIndex="11" GridPane.columnIndex="0" textFill="white"/>
+            <DatePicker fx:id="sickLeaveStartPicker" GridPane.rowIndex="11" GridPane.columnIndex="1" prefWidth="200"/>
+
+            <Label text="Больничный по:" GridPane.rowIndex="12" GridPane.columnIndex="0" textFill="white"/>
+            <DatePicker fx:id="sickLeaveEndPicker" GridPane.rowIndex="12" GridPane.columnIndex="1" prefWidth="200"/>
+        </GridPane>
+
+        <HBox spacing="10">
+            <Button fx:id="saveButton" text="СОЗДАТЬ" onAction="#saveEmployee" style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="100"/>
+            <Button text="Очистить" onAction="#clearForm" style="-fx-background-color: #7f8c8d; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="100"/>
+            <Button fx:id="deleteButton" text="Удалить" onAction="#deleteEmployee" style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="100" visible="false"/>
+        </HBox>
+
+        <Label fx:id="errorLabel" textFill="#e74c3c" wrapText="true"/>
+        <Label fx:id="successLabel" textFill="#2ecc71" wrapText="true"/>
+    </VBox>
+
+</VBox>

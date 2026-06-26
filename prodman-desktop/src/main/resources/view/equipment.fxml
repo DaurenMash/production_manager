@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.EquipmentController"
+      spacing="15" style="-fx-background-color: #1e1e2f;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Text text="Оборудование" fill="white" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <TextField fx:id="searchField" promptText="Поиск..." style="-fx-background-radius: 5; -fx-padding: 8;" prefWidth="200"/>
+        <Button text="Обновить" onAction="#handleRefresh" style="-fx-background-color: #0f3460; -fx-text-fill: white; -fx-background-radius: 5;"/>
+    </HBox>
+
+    <!-- Filter buttons -->
+    <HBox spacing="10">
+        <Button text="Все" onAction="#filterAll" style="-fx-background-color: #0f3460; -fx-text-fill: white; -fx-background-radius: 5;"/>
+        <Button text="Работает" onAction="#filterRunning" style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-background-radius: 5;"/>
+        <Button text="Простой" onAction="#filterIdle" style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-background-radius: 5;"/>
+        <Button text="Поломка" onAction="#filterBroken" style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-background-radius: 5;"/>
+    </HBox>
+
+    <!-- Equipment Table -->
+    <TableView fx:id="equipmentTable" VBox.vgrow="ALWAYS" style="-fx-background-color: #2d2d3f;">
+        <columns>
+            <TableColumn fx:id="idColumn" text="ID" prefWidth="60"/>
+            <TableColumn fx:id="nameColumn" text="Название" prefWidth="200"/>
+            <TableColumn fx:id="statusColumn" text="Статус" prefWidth="120"/>
+            <TableColumn fx:id="currentOrderColumn" text="Текущий заказ" prefWidth="150"/>
+            <TableColumn fx:id="efficiencyColumn" text="Эффективность" prefWidth="100"/>
+            <TableColumn fx:id="lastUpdateColumn" text="Последнее обновление" prefWidth="150"/>
+            <TableColumn fx:id="actionColumn" text="Действия" prefWidth="80"/>
+        </columns>
+    </TableView>
+
+    <!-- Status Bar -->
+    <HBox spacing="10" style="-fx-background-color: #2d2d3f; -fx-background-radius: 5;">
+        <padding><Insets top="10" right="15" bottom="10" left="15"/></padding>
+        <Label fx:id="statusLabel" text="Всего: 48 станков" textFill="#aaaaaa"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="selectedCountLabel" text="" textFill="#aaaaaa"/>
+    </HBox>
+
+</VBox>

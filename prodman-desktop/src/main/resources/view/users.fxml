@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+<?import javafx.scene.control.Tooltip?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.UserManagementController"
+      spacing="15" style="-fx-background-color: #00848C;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Text text="Управление пользователями" fill="white" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+
+        <!-- Поиск по email -->
+        <TextField fx:id="searchEmailField" promptText="Поиск по email..." prefWidth="200" style="-fx-background-radius: 5; -fx-padding: 8;">
+            <tooltip><Tooltip text="Введите email для поиска пользователя"/></tooltip>
+        </TextField>
+        <Button text="Найти" onAction="#searchUserByEmail" style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-background-radius: 5;"/>
+
+        <Button fx:id="refreshButton" text="Обновить" style="-fx-background-color: #0f3460; -fx-text-fill: white; -fx-background-radius: 5;"/>
+    </HBox>
+
+    <!-- Users Table -->
+    <TableView fx:id="userTable" VBox.vgrow="ALWAYS" style="-fx-background-color: #1771f1;">
+        <columns>
+            <TableColumn fx:id="colId" text="ID" prefWidth="200"/>
+            <TableColumn fx:id="colUsername" text="Username" prefWidth="120"/>
+            <TableColumn fx:id="colEmail" text="Email" prefWidth="200"/>
+            <TableColumn fx:id="colRole" text="Role" prefWidth="100"/>
+            <TableColumn fx:id="colEnabled" text="Enabled" prefWidth="80"/>
+            <TableColumn fx:id="colCreatedAt" text="Created At" prefWidth="150"/>
+            <TableColumn fx:id="colActions" text="Actions" prefWidth="100"/>
+        </columns>
+    </TableView>
+
+    <!-- Form Panel -->
+    <VBox fx:id="formPanel" spacing="10" style="-fx-background-color: #1771f1; -fx-background-radius: 10;">
+        <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+
+        <Text text="User Form" fill="white" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+
+        <GridPane hgap="10" vgap="10">
+            <Label text="Username:" GridPane.rowIndex="0" GridPane.columnIndex="0" textFill="white"/>
+            <TextField fx:id="usernameField" GridPane.rowIndex="0" GridPane.columnIndex="1" prefWidth="200">
+                <tooltip><Tooltip text="Обязательное поле. 3-20 символов, буквы и цифры"/></tooltip>
+            </TextField>
+
+            <Label text="Email:" GridPane.rowIndex="1" GridPane.columnIndex="0" textFill="white"/>
+            <TextField fx:id="emailField" GridPane.rowIndex="1" GridPane.columnIndex="1" prefWidth="200">
+                <tooltip><Tooltip text="Обязательное поле. Формат: user@example.com"/></tooltip>
+            </TextField>
+
+            <Label text="Password:" GridPane.rowIndex="2" GridPane.columnIndex="0" textFill="white"/>
+            <PasswordField fx:id="passwordField" GridPane.rowIndex="2" GridPane.columnIndex="1" prefWidth="200">
+                <tooltip><Tooltip text="Минимум 6 символов. Оставьте пустым, чтобы сохранить старый пароль"/></tooltip>
+            </PasswordField>
+
+            <Label text="Role:" GridPane.rowIndex="3" GridPane.columnIndex="0" textFill="white"/>
+            <ComboBox fx:id="roleCombo" GridPane.rowIndex="3" GridPane.columnIndex="1" prefWidth="200">
+                <tooltip><Tooltip text="Роль пользователя: ADMIN, OPERATOR, ANALYST, VISITOR"/></tooltip>
+            </ComboBox>
+
+            <Label text="Enabled:" GridPane.rowIndex="4" GridPane.columnIndex="0" textFill="white"/>
+            <CheckBox fx:id="enabledCheck" GridPane.rowIndex="4" GridPane.columnIndex="1">
+                <tooltip><Tooltip text="Активен / Заблокирован"/></tooltip>
+            </CheckBox>
+        </GridPane>
+
+        <HBox spacing="10">
+            <Button fx:id="saveButton" text="CREATE" style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="100"/>
+            <Button text="Clear" onAction="#clearForm" style="-fx-background-color: #7f8c8d; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="100"/>
+        </HBox>
+
+        <Label fx:id="errorLabel" textFill="red" wrapText="true"/>
+        <Label fx:id="successLabel" textFill="#2ecc71" wrapText="true"/>
+    </VBox>
+
+</VBox>

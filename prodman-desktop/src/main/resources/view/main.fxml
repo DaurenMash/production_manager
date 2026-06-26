@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ButtonBar?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+
+<BorderPane xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.prodman.desktop.controller.MainController">
+
+    <top>
+        <MenuBar style="-fx-background-color: #2d2d3f;">
+            <Menu style="-fx-text-fill: white;" text="Файл">
+                <MenuItem onAction="#handleLogout" text="Сменить пользователя" />
+                <SeparatorMenuItem />
+                <MenuItem onAction="#handleExit" text="Выход" />
+            </Menu>
+            <Menu style="-fx-text-fill: white;" text="Данные">
+                <MenuItem onAction="#showDashboardView" text="Дашборд" />
+                <MenuItem onAction="#showEquipmentView" text="Оборудование" />
+                <MenuItem onAction="#showReportsView" text="Отчеты" />
+                <MenuItem onAction="#showWorkCalendarView" text="Календарь работы" />
+                <MenuItem onAction="#showEmployeesView" text="Работники" />
+            </Menu>
+            <Menu style="-fx-text-fill: white;" text="Настройки">
+                <MenuItem onAction="#handleProfile" text="Профиль" />
+                <MenuItem fx:id="usersMenuItem" onAction="#handleUsers" text="Пользователи" visible="false" />
+            </Menu>
+            <Menu style="-fx-text-fill: white;" text="Помощь">
+                <MenuItem onAction="#handleAbout" text="О программе" />
+            </Menu>
+        </MenuBar>
+    </top>
+
+    <left>
+        <VBox prefWidth="220" spacing="10" style="-fx-background-color: #2d2d3f;">
+            <padding><Insets bottom="20" left="10" right="10" top="20" /></padding>
+
+            <Text fill="#2E8B57" style="-fx-font-size: 40; -fx-font-weight: bold;" text="PRODMAN" VBox.vgrow="NEVER">
+                <VBox.margin><Insets bottom="15" /></VBox.margin>
+            </Text>
+
+            <Button onAction="#showDashboardView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Дашборд" textAlignment="JUSTIFY" />
+            <Button onAction="#showEquipmentView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Оборудование" />
+            <Button onAction="#showReportsView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Отчеты" />
+            <Button onAction="#showScheduleView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="График работ" />
+            <Button onAction="#showWorkCalendarView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Календарь работы" />
+            <Button onAction="#showSettingsView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Настройки" />
+            <Button onAction="#showUsersView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Пользователи" />
+            <Button onAction="#showEmployeesView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Работники" />
+            <Region VBox.vgrow="ALWAYS" />
+
+            <HBox alignment="CENTER" spacing="10">
+                <VBox alignment="CENTER_LEFT">
+                    <Label fx:id="userLabel" style="-fx-font-weight: bold;" text="User" textFill="white" />
+                    <Label fx:id="roleLabel" style="-fx-font-size: 10;" text="Role" textFill="#aaaaaa" />
+                </VBox>
+                <Region HBox.hgrow="ALWAYS" />
+                <Button onAction="#handleLogout" prefHeight="26.0" prefWidth="96.0" style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-background-radius: 5;" text="Выйти" />
+            </HBox>
+         <ButtonBar prefHeight="40.0" prefWidth="200.0" />
+        </VBox>
+    </left>
+
+    <center>
+        <BorderPane fx:id="contentArea" style="-fx-background-color: #1e1e2f;" />
+    </center>
+
+</BorderPane>

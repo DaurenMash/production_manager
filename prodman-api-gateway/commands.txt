@@ -1,0 +1,22 @@
+# 1. Проверка здоровья (публичный)
+curl http://localhost:8080/actuator/health
+
+# 2. Swagger UI (публичный)
+http://localhost:8080/swagger-ui.html
+
+# 3. Информация (публичный)
+curl http://localhost:8080/actuator/info
+
+# 4. Демо эндпоинт (публичный)
+curl http://localhost:8080/api/v1/demo/test
+
+
+
+# 1. Пересобрать API Gateway
+cd D:\prodman\prodman-api-gateway
+mvn clean package
+
+# 2. Перезапустить Docker
+cd D:\prodman
+docker-compose down
+docker-compose up -d --build

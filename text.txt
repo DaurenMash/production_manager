@@ -1,0 +1,109 @@
+
+@REM @echo off
+@REM setlocal enabledelayedexpansion
+@REM
+@REM echo ================================================
+@REM echo   ProdMan - Full Clean Rebuild
+@REM echo ================================================
+@REM echo.
+@REM
+@REM :: Устанавливаем цвета
+@REM set "GREEN=[32m"
+@REM set "YELLOW=[33m"
+@REM set "RED=[31m"
+@REM set "NC=[0m"
+@REM
+@REM :: ============================================
+@REM :: 1. Остановка и удаление всех контейнеров
+@REM :: ============================================
+@REM echo %YELLOW%[1/6] Stopping and removing all containers...%NC%
+@REM cd /d D:\prodman
+@REM docker-compose down --remove-orphans 2>nul
+@REM echo %GREEN%✓ Containers removed%NC%
+@REM echo.
+@REM
+@REM :: ============================================
+@REM :: 2. Удаление всех образов prodman
+@REM :: ============================================
+@REM echo %YELLOW%[2/6] Removing all prodman images...%NC%
+@REM docker rmi prodman-user-service prodman-work-calendar prodman-api-gateway 2>nul
+@REM echo %GREEN%✓ Images removed%NC%
+@REM echo.
+@REM
+@REM :: ============================================
+@REM :: 3. Очистка Docker кэша
+@REM :: ============================================
+@REM echo %YELLOW%[3/6] Cleaning Docker cache...%NC%
+@REM docker builder prune -a -f 2>nul
+@REM echo %GREEN%✓ Cache cleaned%NC%
+@REM echo.
+@REM
+@REM :: ============================================
+@REM :: 4. Полная пересборка
+@REM :: ============================================
+@REM echo %YELLOW%[4/6] Building project...%NC%
+@REM call mvn clean install -DskipTests
+@REM if %ERRORLEVEL% NEQ 0 (
+@REM     echo %RED%✗ Build failed!%NC%
+@REM     pause
+@REM     exit /b 1
+@REM )
+@REM echo %GREEN%✓ Build complete%NC%
+@REM echo.
+@REM
+@REM :: ============================================
+@REM :: 5. Запуск всех сервисов
+@REM :: ============================================
+@REM echo %YELLOW%[5/6] Starting services...%NC%
+@REM docker-compose --env-file .env.dev up -d --build --force-recreate
+@REM if %ERRORLEVEL% NEQ 0 (
+@REM     echo %RED%✗ Failed to start services!%NC%
+@REM     pause
+@REM     exit /b 1
+@REM )
+@REM echo %GREEN%✓ Services started%NC%
+@REM echo.
+@REM
+@REM :: ============================================
+@REM :: 6. Ожидание готовности сервисов
+@REM :: ============================================
+@REM echo %YELLOW%[6/6] Waiting for services to be ready...%NC%
+@REM timeout /t 30 /nobreak >nul
+@REM echo %GREEN%✓ Services should be ready%NC%
+@REM echo.
+@REM
+@REM :: ============================================
+@REM :: 7. Запуск Desktop
+@REM :: ============================================
+@REM echo %YELLOW%Starting Desktop...%NC%
+@REM cd /d D:\prodman\prodman-desktop
+@REM start "ProdMan Desktop" cmd /k "echo Starting ProdMan Desktop... && echo. && mvn clean compile javafx:run"
+@REM echo %GREEN%✓ Desktop started%NC%
+@REM echo.
+@REM
+@REM :: ============================================
+@REM :: Итоговая информация
+@REM :: ============================================
+@REM echo ================================================
+@REM echo   %GREEN%All services are running!%NC%
+@REM echo ================================================
+@REM echo.
+@REM echo   Services:
+@REM echo     - user-service    http://localhost:8081
+@REM echo     - work-calendar   http://localhost:8082
+@REM echo     - api-gateway     http://localhost:8080
+@REM echo.
+@REM echo   Swagger UI:
+@REM echo     - user-service    http://localhost:8081/api/v1/swagger-ui.html
+@REM echo     - work-calendar   http://localhost:8082/api/v1/swagger-ui.html
+@REM echo     - api-gateway     http://localhost:8080/swagger-ui.html
+@REM echo.
+@REM echo   Actuator Health:
+@REM echo     - user-service    http://localhost:8081/api/v1/actuator/health
+@REM echo     - work-calendar   http://localhost:8082/api/v1/actuator/health
+@REM echo     - api-gateway     http://localhost:8080/actuator/health
+@REM echo.
+@REM echo   Desktop app running in new window
+@REM echo.
+@REM
+@REM pause

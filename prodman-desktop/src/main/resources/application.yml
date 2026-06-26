@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: prodman-desktop
+
+api:
+  url: "http://localhost:8888"  # ← API Gateway, а не user-service

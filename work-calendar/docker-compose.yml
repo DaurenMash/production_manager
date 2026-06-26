@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: work-calendar-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-work_calendar}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - work-calendar-network
+
+  work-calendar:
+    build: .
+    container_name: work-calendar-app
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-8086}:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-work_calendar}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      SERVER_PORT: ${SERVER_PORT:-8086}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - work-calendar-network
+
+volumes:
+  postgres_data:
+    name: work-calendar-postgres-data
+
+networks:
+  work-calendar-network:
+    name: work-calendar-network
+    driver: bridge

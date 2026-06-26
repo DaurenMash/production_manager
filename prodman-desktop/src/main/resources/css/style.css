@@ -1,0 +1,40 @@
+.root {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.table-view {
+    -fx-background-color: #1e1e2f;
+}
+
+.table-view .column-header {
+    -fx-background-color: #0f3460;
+    -fx-text-fill: white;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #2d2d3f;
+}
+
+.table-row-cell:even {
+    -fx-background-color: #1e1e2f;
+}
+
+.button {
+    -fx-background-color: #0f3460;
+    -fx-text-fill: white;
+    -fx-background-radius: 5;
+}
+
+.button:hover {
+    -fx-background-color: #1a4a7a;
+}
+
+.text-field {
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-border-color: #ccc;
+}
+
+.text-field:focused {
+    -fx-border-color: #0f3460;
+}

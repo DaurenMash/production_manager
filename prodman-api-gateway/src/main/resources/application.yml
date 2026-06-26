@@ -1,0 +1,73 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: api-gateway
+  main:
+    web-application-type: reactive
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            # Исправлено: allowedOriginPatterns вместо allowedOrigins при allowCredentials: true
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        - id: user-service-route
+          uri: http://user-service-app:8081
+          predicates:
+            - Path=/user-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: work-calendar-route
+          uri: http://work-calendar-app:8082
+          predicates:
+            - Path=/work-calendar/**
+          filters:
+            - StripPrefix=1
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+
+jwt:
+  secret: ${JWT_SECRET:prodmanSuperSecretKey2025ForJWTGeneration512BitLongTempKeyForDevOnly}
+
+logging:
+  level:
+    com.prodman.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    gateway:
+      enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    enabled: true
+    urls:
+      - name: "User Service"
+        url: /user-service/v3/api-docs
+      - name: "Work Calendar"
+        url: /work-calendar/v3/api-docs
+  cache:
+    disabled: true
+#  api-docs:
+#    path: /v3/api-docs
+#    enabled: true
+#    groups:
+#      enabled: false   # ← ОТКЛЮЧАЕТ ГРУППИРОВКУ
+  show-actuator: true

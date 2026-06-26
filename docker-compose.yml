@@ -1,0 +1,202 @@
+services:
+  # PostgreSQL для user-service
+  user-service-postgres:
+    image: postgres:16-alpine
+    container_name: user-service-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${USER_POSTGRES_DB:-prodman_users}
+      POSTGRES_USER: ${USER_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${USER_POSTGRES_PASSWORD:-password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${USER_POSTGRES_PORT:-54322}:5432"
+    volumes:
+      - user-postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${USER_POSTGRES_USER:-postgres} -d ${USER_POSTGRES_DB:-prodman_users}"]  # ← ЭТО НУЖНО ДОБАВИТЬ
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - prodman-network
+
+  # PostgreSQL для work-calendar
+  work-calendar-postgres:
+    image: postgres:16-alpine
+    container_name: work-calendar-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${WORK_POSTGRES_DB:-prodman_calendar}
+      POSTGRES_USER: ${WORK_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${WORK_POSTGRES_PASSWORD:-password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${WORK_POSTGRES_PORT:-54333}:5432"
+    volumes:
+      - calendar-postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WORK_POSTGRES_USER:-postgres} -d ${WORK_POSTGRES_DB:-prodman_calendar}"]  # ← И ЭТО ТОЖЕ
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - prodman-network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: prodman-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - prodman-network
+
+  # MongoDB для логов API Gateway
+  mongodb:
+    image: mongo:7.0
+    container_name: prodman-mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongodb-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-prodman_logs}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - prodman-network
+
+  # User Service
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service-app
+    restart: unless-stopped
+    ports:
+      - "${USER_SERVICE_PORT:-8081}:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://user-service-postgres:5432/${USER_POSTGRES_DB:-prodman_users}
+      SPRING_DATASOURCE_USERNAME: ${USER_POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${USER_POSTGRES_PASSWORD:-password}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+      SERVER_PORT: 8081
+      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
+    depends_on:
+      user-service-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - prodman-network
+
+  # Work Calendar Service
+  work-calendar:
+    build:
+      context: ./work-calendar
+      dockerfile: Dockerfile
+    container_name: work-calendar-app
+    restart: unless-stopped
+    ports:
+      - "${WORK_SERVICE_PORT:-8082}:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://work-calendar-postgres:5432/${WORK_POSTGRES_DB:-prodman_calendar}
+      SPRING_DATASOURCE_USERNAME: ${WORK_POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${WORK_POSTGRES_PASSWORD:-password}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      SERVER_PORT: 8082
+      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      work-calendar-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - prodman-network
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./prodman-api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "${API_GATEWAY_PORT:-8888}:8888"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      USER_SERVICE_URL: http://user-service-app:8081
+      WORK_CALENDAR_URL: http://work-calendar-app:8082
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      SPRING_DATA_MONGODB_HOST: mongodb
+      SPRING_DATA_MONGODB_PORT: 27017
+      SPRING_DATA_MONGODB_DATABASE: ${MONGO_DB:-prodman_logs}
+      SPRING_DATA_MONGODB_USERNAME: ${MONGO_USER:-admin}
+      SPRING_DATA_MONGODB_PASSWORD: ${MONGO_PASSWORD:-password}
+      SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE: admin
+    depends_on:
+      - redis
+      - user-service
+      - work-calendar
+      - mongodb
+    networks:
+      - prodman-network
+
+networks:
+  prodman-network:
+    name: prodman-network
+    driver: bridge
+
+volumes:
+  user-postgres-data:
+    name: user-service-postgres-data
+  calendar-postgres-data:
+    name: work-calendar-postgres-data
+  redis-data:
+    name: prodman-redis-data
+  mongodb-data:
+    name: prodman-mongodb-data
