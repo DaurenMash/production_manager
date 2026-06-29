@@ -1,3 +1,60 @@
+┌─────────────────────────────────────────────────────────────────┐
+│                         ПОЛЬЗОВАТЕЛЬ                           │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    DESKTOP ПРИЛОЖЕНИЕ                          │
+│              (prodman-desktop-1.0.0.jar)                       │
+│                  JavaFX + OkHttp                               │
+│                                                                 │
+│  • Логин через AuthService                                     │
+│  • Отправляет запросы в API Gateway                           │
+│  • Отображает UI (FXML)                                       │
+│  • Хранит токен в ~/.prodman/token.dat                        │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+                              │ HTTP (порт 8888)
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      API GATEWAY                               │
+│              (prodman-api-gateway.jar)                          │
+│                  Spring Cloud Gateway                          │
+│                                                                 │
+│  • Проверяет JWT токены                                        │
+│  • Ограничивает частоту запросов (Rate Limit)                  │
+│  • Логирует все запросы в MongoDB                              │
+│  • Проксирует /user-service → порт 8081                        │
+│  • Проксирует /work-calendar → порт 8082                       │
+└──────────────┬────────────────────────────┬────────────────────┘
+               │                            │
+               ▼                            ▼
+┌──────────────────────────┐ ┌──────────────────────────┐
+│     USER SERVICE         │ │    WORK CALENDAR         │
+│  (user-service.jar)      │ │  (work-calendar.jar)     │
+│   Spring Boot + JPA      │ │   Spring Boot + JPA      │
+│                          │ │                          │
+│  • /auth/login           │ │  • /employees            │
+│  • /auth/register        │ │  • /schedules            │
+│  • /auth/refresh         │ │  • /shifts               │
+│  • /users                │ │  • /equipment            │
+│                          │ │                          │
+│  PostgreSQL: prodman_users│ │  PostgreSQL: prodman_calendar│
+│  Redis: кеш токенов      │ │                          │
+└──────────────────────────┘ └──────────────────────────┘
+
+Как сделать установщик:
+jpackage --type exe \
+    --name ProdMan \
+    --input target \
+    --main-jar prodman-desktop-1.0.0.jar \
+    --main-class com.prodman.desktop.ProdManApplication \
+    --win-console \
+    --win-dir-chooser \
+    --win-shortcut \
+    --win-menu
+
+
 
 @REM @echo off
 @REM setlocal enabledelayedexpansion
@@ -107,3 +164,24 @@
 @REM echo.
 @REM
 @REM pause
+
+
+1. Пользователь запускает .exe или .jar
+   ↓
+2. Открывается окно логина
+   ↓
+3. Вводит логин/пароль → запрос в API Gateway → User Service
+   ↓
+4. Получает токен → сохраняет в ~/.prodman/token.dat
+   ↓
+5. Открывается главное окно (main.fxml)
+   ↓
+6. Загружаются данные с сервера через API
+   ↓
+7. Пользователь работает (смотрит сотрудников, оборудование, графики)
+   ↓
+8. Любой запрос к API автоматически использует токен
+   ↓
+9. Если токен истек → автоматическое обновление
+   ↓
+10. Выход → TokenManager.clearToken() → удаляет token.dat
