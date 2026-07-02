@@ -2,8 +2,10 @@
     -fx-font-family: "Segoe UI", Arial, sans-serif;
 }
 
+/* ===== Стили для TableView ===== */
 .table-view {
     -fx-background-color: #1e1e2f;
+    -fx-control-inner-background: #1e1e2f;
 }
 
 .table-view .column-header {
@@ -11,30 +13,185 @@
     -fx-text-fill: white;
 }
 
+.table-view .column-header .label {
+    -fx-text-fill: white;
+}
+
 .table-row-cell:odd {
     -fx-background-color: #2d2d3f;
+    -fx-text-fill: white;
 }
 
 .table-row-cell:even {
     -fx-background-color: #1e1e2f;
+    -fx-text-fill: white;
 }
 
+.table-row-cell:hover {
+    -fx-background-color: #3d3d5f;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #0f3460;
+}
+
+/* ===== Общие стили для кнопок ===== */
 .button {
     -fx-background-color: #0f3460;
     -fx-text-fill: white;
     -fx-background-radius: 5;
+    -fx-cursor: hand;
+    -fx-font-size: 13px;
+    -fx-transition: all 0.15s ease-in-out;
 }
 
 .button:hover {
     -fx-background-color: #1a4a7a;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+    -fx-effect: dropshadow(gaussian, rgba(15, 52, 96, 0.4), 8, 0.3, 0, 0);
 }
 
+.button:pressed {
+    -fx-background-color: #0a1f3a;
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+    -fx-translate-y: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 4, 0.2, 0, 1);
+}
+
+/* ===== Кнопки навигации в левой панели ===== */
+.nav-button {
+    -fx-background-color: #2E8B57;
+    -fx-text-fill: white;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+    -fx-font-size: 14px;
+    -fx-font-weight: normal;
+    -fx-pref-width: 200;
+    -fx-alignment: center;
+    -fx-transition: all 0.15s ease-in-out;
+}
+
+.nav-button:hover {
+    -fx-background-color: #3CB371;
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+    -fx-effect: dropshadow(gaussian, rgba(46, 139, 87, 0.5), 12, 0.4, 0, 0);
+}
+
+.nav-button:pressed {
+    -fx-background-color: #1E6B3A;
+    -fx-scale-x: 0.93;
+    -fx-scale-y: 0.93;
+    -fx-translate-y: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 6, 0.3, 0, 2);
+}
+
+/* Активная кнопка (выбранный раздел) */
+.nav-button.active {
+    -fx-background-color: #1E6B3A;
+    -fx-border-color: #3CB371;
+    -fx-border-width: 2px;
+    -fx-border-radius: 5;
+    -fx-effect: dropshadow(gaussian, rgba(46, 139, 87, 0.6), 15, 0.5, 0, 0);
+}
+
+/* ===== Кнопка "Выйти" ===== */
+.logout-button {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-pref-height: 26;
+    -fx-pref-width: 96;
+    -fx-transition: all 0.15s ease-in-out;
+}
+
+.logout-button:hover {
+    -fx-background-color: #c0392b;
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+    -fx-effect: dropshadow(gaussian, rgba(231, 76, 60, 0.4), 10, 0.3, 0, 0);
+}
+
+.logout-button:pressed {
+    -fx-background-color: #a93226;
+    -fx-scale-x: 0.93;
+    -fx-scale-y: 0.93;
+    -fx-translate-y: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 5, 0.2, 0, 1);
+}
+
+/* ===== Поля ввода ===== */
 .text-field {
     -fx-background-radius: 5;
     -fx-border-radius: 5;
     -fx-border-color: #ccc;
+    -fx-padding: 8 12;
+    -fx-font-size: 13px;
 }
 
 .text-field:focused {
     -fx-border-color: #0f3460;
+    -fx-effect: dropshadow(gaussian, rgba(15, 52, 96, 0.3), 8, 0.2, 0, 0);
+}
+
+/* ===== Стили для меню ===== */
+.menu-bar {
+    -fx-background-color: #2d2d3f;
+}
+
+.menu {
+    -fx-text-fill: white;
+}
+
+.menu .label {
+    -fx-text-fill: white;
+}
+
+.menu-item {
+    -fx-text-fill: #333;
+}
+
+.menu-item:hover {
+    -fx-background-color: #0f3460;
+}
+
+.menu-item:hover .label {
+    -fx-text-fill: white;
+}
+
+/* ===== Дополнительные стили для Label ===== */
+.label {
+    -fx-text-fill: white;
+}
+
+/* ===== ScrollBar стилизация ===== */
+.scroll-bar:vertical {
+    -fx-background-color: #1e1e2f;
+}
+
+.scroll-bar:vertical .thumb {
+    -fx-background-color: #0f3460;
+    -fx-background-radius: 5;
+}
+
+.scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #1a4a7a;
+}
+
+.scroll-bar:horizontal {
+    -fx-background-color: #1e1e2f;
+}
+
+.scroll-bar:horizontal .thumb {
+    -fx-background-color: #0f3460;
+    -fx-background-radius: 5;
+}
+
+.scroll-bar:horizontal .thumb:hover {
+    -fx-background-color: #1a4a7a;
 }

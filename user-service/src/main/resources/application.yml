@@ -44,10 +44,10 @@ server:
 
 logging:
   level:
-    com.prodman.userservice: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate: DEBUG
-    org.springframework.web: DEBUG
+    com.prodman.userservice: INFO
+    org.springframework.security: WARN
+    org.hibernate: WARN
+    org.springframework.web: WARN
 
 springdoc:
   api-docs:

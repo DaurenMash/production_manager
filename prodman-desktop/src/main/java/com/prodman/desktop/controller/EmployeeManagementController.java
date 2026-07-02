@@ -6,8 +6,12 @@ import com.prodman.desktop.utils.TokenManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,7 +145,7 @@ public class EmployeeManagementController {
 
                 editButton.setOnAction(event -> {
                     Map<String, Object> employee = getTableView().getItems().get(getIndex());
-                    selectEmployee(employee);
+                    openEditWindow(employee);
                 });
 
                 deleteButton.setOnAction(event -> {
@@ -226,6 +230,26 @@ public class EmployeeManagementController {
     @FXML
     public void refresh() {
         loadEmployees();
+    }
+
+    private void openEditWindow(Map<String, Object> employee) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/employee-edit.fxml"));
+            Parent root = loader.load();
+
+            EmployeeEditController controller = loader.getController();
+            controller.setEmployeeData(employee);
+            controller.setOnSaveCallback(this::loadEmployees);
+
+            Stage stage = new Stage();
+            stage.setTitle("Редактирование работника");
+            stage.setScene(new Scene(root, 800, 600));
+            stage.showAndWait();
+
+        } catch (Exception e) {
+            log.error("Error opening edit window", e);
+            showError("Ошибка открытия окна редактирования: " + e.getMessage());
+        }
     }
 
     @FXML

@@ -42,21 +42,26 @@
     </top>
 
     <left>
-        <VBox prefWidth="220" spacing="10" style="-fx-background-color: #2d2d3f;">
-            <padding><Insets bottom="20" left="10" right="10" top="20" /></padding>
+        <VBox fx:id="leftVBox" prefWidth="220" spacing="10" style="-fx-background-color: #2d2d3f;">
+            <padding>
+                <Insets bottom="20" left="10" right="10" top="20" />
+            </padding>
 
             <Text fill="#2E8B57" style="-fx-font-size: 40; -fx-font-weight: bold;" text="PRODMAN" VBox.vgrow="NEVER">
-                <VBox.margin><Insets bottom="15" /></VBox.margin>
+                <VBox.margin>
+                    <Insets bottom="15" />
+                </VBox.margin>
             </Text>
 
-            <Button onAction="#showDashboardView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Дашборд" textAlignment="JUSTIFY" />
-            <Button onAction="#showEquipmentView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Оборудование" />
-            <Button onAction="#showReportsView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Отчеты" />
-            <Button onAction="#showScheduleView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="График работ" />
-            <Button onAction="#showWorkCalendarView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Календарь работы" />
-            <Button onAction="#showSettingsView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Настройки" />
-            <Button onAction="#showUsersView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Пользователи" />
-            <Button onAction="#showEmployeesView" prefWidth="200" style="-fx-background-color: #2E8B57; -fx-text-fill: white; -fx-background-radius: 5;" text="Работники" />
+            <Button fx:id="dashboardButton" onAction="#showDashboardView" styleClass="nav-button" text="Дашборд" />
+            <Button fx:id="equipmentButton" onAction="#showEquipmentView" styleClass="nav-button" text="Оборудование" />
+            <Button fx:id="reportsButton" onAction="#showReportsView" styleClass="nav-button" text="Отчеты" />
+            <Button fx:id="scheduleButton" onAction="#showScheduleView" styleClass="nav-button" text="График работ" />
+            <Button fx:id="workCalendarButton" onAction="#showWorkCalendarView" styleClass="nav-button" text="Календарь работы" />
+            <Button fx:id="settingsButton" onAction="#showSettingsView" styleClass="nav-button" text="Настройки" />
+            <Button fx:id="usersButton" onAction="#showUsersView" styleClass="nav-button" text="Пользователи" />
+            <Button fx:id="employeesButton" onAction="#showEmployeesView" styleClass="nav-button" text="Работники" />
+
             <Region VBox.vgrow="ALWAYS" />
 
             <HBox alignment="CENTER" spacing="10">
@@ -65,9 +70,9 @@
                     <Label fx:id="roleLabel" style="-fx-font-size: 10;" text="Role" textFill="#aaaaaa" />
                 </VBox>
                 <Region HBox.hgrow="ALWAYS" />
-                <Button onAction="#handleLogout" prefHeight="26.0" prefWidth="96.0" style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-background-radius: 5;" text="Выйти" />
+                <Button fx:id="logoutButton" onAction="#handleLogout" styleClass="logout-button" text="Выйти" />
             </HBox>
-         <ButtonBar prefHeight="40.0" prefWidth="200.0" />
+            <ButtonBar prefHeight="40.0" prefWidth="200.0" />
         </VBox>
     </left>
 

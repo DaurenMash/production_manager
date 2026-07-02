@@ -47,7 +47,7 @@ docker-compose up -d --build
 echo.
 echo ========================================
 echo Done!
-echo Check: http://localhost:8080/swagger-ui/index.html
+echo Check: http://localhost:8888/swagger-ui/index.html
 echo ========================================
 pause
 exit /b 0
