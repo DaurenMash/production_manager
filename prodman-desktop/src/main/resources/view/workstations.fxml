@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.WorkstationController"
+      spacing="15" style="-fx-background-color: #1e1e2f;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Text text="Рабочие места" fill="white" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="➕ Создать" onAction="#handleCreate" style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-background-radius: 5;"/>
+        <Button text="🔄 Обновить" onAction="#handleRefresh" style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-background-radius: 5;"/>
+    </HBox>
+
+    <!-- Таблица -->
+    <TableView fx:id="workstationTable" VBox.vgrow="ALWAYS" style="-fx-background-color: #2d2d3f;">
+        <columns>
+            <TableColumn fx:id="colDepartment" text="Отдел" prefWidth="150"/>
+            <TableColumn fx:id="colTitle" text="Название" prefWidth="200"/>
+            <TableColumn fx:id="colCreatedBy" text="Создал" prefWidth="150"/>
+            <TableColumn fx:id="colCreatedAt" text="Дата создания" prefWidth="150"/>
+            <TableColumn fx:id="colStatus" text="Статус" prefWidth="100"/>
+            <TableColumn fx:id="colEmployees" text="Сотрудники" prefWidth="200"/>
+            <TableColumn fx:id="colActions" text="Действия" prefWidth="150"/>
+        </columns>
+    </TableView>
+
+</VBox>

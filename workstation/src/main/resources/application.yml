@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: workstation
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://workstation-postgres:5432/prodman_workstations}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  liquibase:
+    enabled: true
+    change-log: classpath:/db/changelog/db.changelog-master.xml
+
+server:
+  port: ${SERVER_PORT:8083}
+
+user:
+  service:
+    url: ${USER_SERVICE_URL:http://user-service-app:8081}
+
+employee:
+  service:
+    url: ${EMPLOYEE_SERVICE_URL:http://employee-service-app:8084}
+
+logging:
+  level:
+    com.prodman.workstation: DEBUG
+    org.springframework.web: DEBUG
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
