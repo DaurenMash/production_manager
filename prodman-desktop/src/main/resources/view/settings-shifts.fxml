@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.ShiftSettingsController"
+      spacing="15" style="-fx-background-color: #1e1e2f;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Text text="Настройки смен" fill="white" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+
+    <HBox spacing="20">
+        <RadioButton fx:id="twoShiftsRadio" text="2 смены (День/Ночь)" textFill="white"/>
+        <RadioButton fx:id="threeShiftsRadio" text="3 смены (Утро/День/Ночь)" textFill="white"/>
+    </HBox>
+
+    <TableView fx:id="shiftsTable" VBox.vgrow="ALWAYS" style="-fx-background-color: #2d2d3f;">
+        <columns>
+            <TableColumn fx:id="colOrder" text="№" prefWidth="50"/>
+            <TableColumn fx:id="colName" text="Название смены" prefWidth="150"/>
+            <TableColumn fx:id="colStart" text="Начало" prefWidth="100"/>
+            <TableColumn fx:id="colEnd" text="Конец" prefWidth="100"/>
+            <TableColumn fx:id="colColor" text="Цвет" prefWidth="80"/>
+        </columns>
+    </TableView>
+
+    <HBox spacing="10">
+        <Button text="Сохранить" onAction="#handleSave" style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="120"/>
+        <Button text="Сбросить" onAction="#handleReset" style="-fx-background-color: #7f8c8d; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="120"/>
+    </HBox>
+
+    <Label fx:id="messageLabel" textFill="#2ecc71" wrapText="true"/>
+</VBox>

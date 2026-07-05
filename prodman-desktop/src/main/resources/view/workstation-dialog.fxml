@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.WorkstationDialogController"
+      spacing="15" style="-fx-background-color: #2d2d3f;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Text text="Рабочее место" fill="white" style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+
+    <GridPane hgap="15" vgap="10">
+        <Label text="Отдел:" GridPane.rowIndex="0" GridPane.columnIndex="0" textFill="white" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="departmentField" GridPane.rowIndex="0" GridPane.columnIndex="1" prefWidth="250"/>
+
+        <Label text="Название:" GridPane.rowIndex="1" GridPane.columnIndex="0" textFill="white" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="titleField" GridPane.rowIndex="1" GridPane.columnIndex="1" prefWidth="250"/>
+
+        <Label text="Сотрудники:" GridPane.rowIndex="2" GridPane.columnIndex="0" textFill="white" style="-fx-font-weight: bold;"/>
+        <ListView fx:id="employeesList" GridPane.rowIndex="2" GridPane.columnIndex="1" prefHeight="100"/>
+    </GridPane>
+
+    <HBox spacing="10">
+        <Button text="Сохранить" onAction="#handleSave" style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="100"/>
+        <Button text="Отмена" onAction="#handleCancel" style="-fx-background-color: #7f8c8d; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="100"/>
+    </HBox>
+
+    <Label fx:id="messageLabel" textFill="#e74c3c" wrapText="true"/>
+</VBox>
