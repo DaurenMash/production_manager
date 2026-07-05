@@ -23,6 +23,59 @@ services:
     networks:
       - prodman-network
 
+
+  # ===== PostgreSQL для workstation =====
+  workstation-postgres:
+    image: postgres:16-alpine
+    container_name: workstation-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${WORKSTATION_POSTGRES_DB:-prodman_workstations}
+      POSTGRES_USER: ${WORKSTATION_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${WORKSTATION_POSTGRES_PASSWORD:-password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${WORKSTATION_POSTGRES_PORT:-54344}:5432"
+    volumes:
+      - workstation-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WORKSTATION_POSTGRES_USER:-postgres} -d ${WORKSTATION_POSTGRES_DB:-prodman_workstations}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - prodman-network
+
+  # ===== Workstation Service =====
+  workstation:
+    build:
+      context: ./workstation
+      dockerfile: Dockerfile
+    container_name: workstation-app
+    restart: unless-stopped
+    ports:
+      - "${WORKSTATION_SERVICE_PORT:-8083}:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://workstation-postgres:5432/${WORKSTATION_POSTGRES_DB:-prodman_workstations}
+      SPRING_DATASOURCE_USERNAME: ${WORKSTATION_POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${WORKSTATION_POSTGRES_PASSWORD:-password}
+      SERVER_PORT: 8083
+      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
+      EMPLOYEE_SERVICE_URL: http://employee-service-app:8084
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      workstation-postgres:
+        condition: service_healthy
+    networks:
+      - prodman-network
+
   # PostgreSQL для work-calendar
   work-calendar-postgres:
     image: postgres:16-alpine
@@ -155,6 +208,58 @@ services:
         condition: service_healthy
     networks:
       - prodman-network
+  # PostgreSQL для employee-service
+  employee-postgres:
+    image: postgres:16-alpine
+    container_name: employee-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${EMPLOYEE_POSTGRES_DB:-prodman_employees}
+      POSTGRES_USER: ${EMPLOYEE_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${EMPLOYEE_POSTGRES_PASSWORD:-password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${EMPLOYEE_POSTGRES_PORT:-54355}:5432"
+    volumes:
+      - employee-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${EMPLOYEE_POSTGRES_USER:-postgres} -d ${EMPLOYEE_POSTGRES_DB:-prodman_employees}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - prodman-network
+
+  # Employee Service
+  employee-service:
+    build:
+      context: ./employee-service
+      dockerfile: Dockerfile
+    container_name: employee-service-app
+    restart: unless-stopped
+    ports:
+      - "${EMPLOYEE_SERVICE_PORT:-8084}:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://employee-postgres:5432/${EMPLOYEE_POSTGRES_DB:-prodman_employees}
+      SPRING_DATASOURCE_USERNAME: ${EMPLOYEE_POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${EMPLOYEE_POSTGRES_PASSWORD:-password}
+      SERVER_PORT: 8084
+      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8084/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      employee-postgres:
+        condition: service_healthy
+    networks:
+      - prodman-network
+
+
 
   # API Gateway
   api-gateway:
@@ -196,7 +301,11 @@ volumes:
     name: user-service-postgres-data
   calendar-postgres-data:
     name: work-calendar-postgres-data
+  workstation-postgres-data:
+    name: workstation-postgres-data
   redis-data:
     name: prodman-redis-data
   mongodb-data:
     name: prodman-mongodb-data
+  employee-postgres-data:
+    name: employee-postgres-data

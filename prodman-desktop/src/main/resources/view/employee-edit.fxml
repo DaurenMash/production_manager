@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.EmployeeEditController"
+      spacing="15" style="-fx-background-color: #1e1e2f;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Text text="Редактирование работника" fill="white" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+
+    <GridPane hgap="15" vgap="10">
+        <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+
+        <!-- Колонка 1 -->
+        <Label text="Имя:" GridPane.rowIndex="0" GridPane.columnIndex="0" textFill="white" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="firstNameField" GridPane.rowIndex="0" GridPane.columnIndex="1" prefWidth="250"/>
+
+        <Label text="Фамилия:" GridPane.rowIndex="1" GridPane.columnIndex="0" textFill="white" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="lastNameField" GridPane.rowIndex="1" GridPane.columnIndex="1" prefWidth="250"/>
+
+        <Label text="Email:" GridPane.rowIndex="2" GridPane.columnIndex="0" textFill="white" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="emailField" GridPane.rowIndex="2" GridPane.columnIndex="1" prefWidth="250" editable="false"/>
+
+        <Label text="Должности:" GridPane.rowIndex="3" GridPane.columnIndex="0" textFill="white" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="positionsField" GridPane.rowIndex="3" GridPane.columnIndex="1" prefWidth="250" promptText="Инженер, Оператор..."/>
+
+        <Label text="Статус:" GridPane.rowIndex="4" GridPane.columnIndex="0" textFill="white" style="-fx-font-weight: bold;"/>
+        <ComboBox fx:id="statusCombo" GridPane.rowIndex="4" GridPane.columnIndex="1" prefWidth="250"/>
+
+        <Label text="Отдел:" GridPane.rowIndex="5" GridPane.columnIndex="0" textFill="white" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="departmentField" GridPane.rowIndex="5" GridPane.columnIndex="1" prefWidth="250"/>
+
+        <Label text="Телефон:" GridPane.rowIndex="6" GridPane.columnIndex="0" textFill="white" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="phoneField" GridPane.rowIndex="6" GridPane.columnIndex="1" prefWidth="250"/>
+
+        <!-- Колонка 2 -->
+        <Label text="Макс. часов/нед:" GridPane.rowIndex="0" GridPane.columnIndex="2" textFill="white" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="maxHoursField" GridPane.rowIndex="0" GridPane.columnIndex="3" prefWidth="250" promptText="40"/>
+
+        <Label text="Предп. смена:" GridPane.rowIndex="1" GridPane.columnIndex="2" textFill="white" style="-fx-font-weight: bold;"/>
+        <ComboBox fx:id="preferredShiftCombo" GridPane.rowIndex="1" GridPane.columnIndex="3" prefWidth="250"/>
+
+        <Label text="Отпуск с:" GridPane.rowIndex="2" GridPane.columnIndex="2" textFill="white" style="-fx-font-weight: bold;"/>
+        <DatePicker fx:id="vacationStartPicker" GridPane.rowIndex="2" GridPane.columnIndex="3" prefWidth="250"/>
+
+        <Label text="Отпуск по:" GridPane.rowIndex="3" GridPane.columnIndex="2" textFill="white" style="-fx-font-weight: bold;"/>
+        <DatePicker fx:id="vacationEndPicker" GridPane.rowIndex="3" GridPane.columnIndex="3" prefWidth="250"/>
+
+        <Label text="Больничный с:" GridPane.rowIndex="4" GridPane.columnIndex="2" textFill="white" style="-fx-font-weight: bold;"/>
+        <DatePicker fx:id="sickLeaveStartPicker" GridPane.rowIndex="4" GridPane.columnIndex="3" prefWidth="250"/>
+
+        <Label text="Больничный по:" GridPane.rowIndex="5" GridPane.columnIndex="2" textFill="white" style="-fx-font-weight: bold;"/>
+        <DatePicker fx:id="sickLeaveEndPicker" GridPane.rowIndex="5" GridPane.columnIndex="3" prefWidth="250"/>
+    </GridPane>
+
+    <HBox spacing="10">
+        <Button fx:id="saveButton" text="СОХРАНИТЬ" onAction="#handleSave" style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="120"/>
+        <Button text="ОТМЕНА" onAction="#handleCancel" style="-fx-background-color: #7f8c8d; -fx-text-fill: white; -fx-background-radius: 5;" prefWidth="120"/>
+    </HBox>
+
+    <Label fx:id="errorLabel" textFill="#e74c3c" wrapText="true"/>
+    <Label fx:id="successLabel" textFill="#2ecc71" wrapText="true"/>
+</VBox>
