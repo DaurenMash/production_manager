@@ -2,6 +2,7 @@ package com.prodman.desktop.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.prodman.desktop.config.ApiConfig;
 import com.prodman.desktop.utils.TokenManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -28,7 +29,7 @@ public class EmployeeManagementController {
 
     private static final Logger log = LoggerFactory.getLogger(EmployeeManagementController.class);
 
-    private static final String API_BASE_URL = "http://localhost:8888/work-calendar/api/v1/employees";
+    private static final String API_BASE_URL = ApiConfig.EMPLOYEES;
     private final OkHttpClient client = new OkHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
 

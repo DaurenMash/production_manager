@@ -20,9 +20,8 @@ public class Shift {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @ManyToOne
-    @JoinColumn(name = "employee_id", nullable = false)
-    private Employee employee;
+    @Column(name = "employee_id")
+    private String employeeId;
 
     @Column(nullable = false)
     private LocalDate date;

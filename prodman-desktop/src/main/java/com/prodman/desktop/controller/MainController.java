@@ -5,6 +5,8 @@ import com.prodman.desktop.utils.TokenManager;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -12,6 +14,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -139,6 +142,18 @@ public class MainController {
         loadView("/view/employees.fxml", "Работники");
     }
 
+    @FXML
+    public void showShiftSettings() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/settings-shifts.fxml"));
+            Pane view = loader.load();
+            contentArea.setCenter(view);
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("Ошибка загрузки настроек смен: " + e.getMessage());
+        }
+    }
+
     // ===== Обработчики меню =====
     @FXML
     public void handleUsers() {
@@ -170,6 +185,11 @@ public class MainController {
         showInfo("О программе", "ProdMan v1.0\n\n" +
                 "Система управления производством\n" +
                 "© 2026 Все права защищены.");
+    }
+
+    @FXML
+    public void showWorkstationsView() {
+        loadView("/view/workstations.fxml", "Рабочие места");
     }
 
     // ===== Вспомогательные методы =====

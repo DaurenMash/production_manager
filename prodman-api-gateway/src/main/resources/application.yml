@@ -31,6 +31,20 @@ spring:
           filters:
             - StripPrefix=1
 
+        - id: workstation-route
+          uri: http://workstation-app:8083
+          predicates:
+            - Path=/workstation/**
+          filters:
+            - StripPrefix=1
+
+        - id: employee-service-route
+          uri: http://employee-service-app:8084
+          predicates:
+            - Path=/employee-service/**
+          filters:
+            - StripPrefix=1
+
   data:
     redis:
       host: ${REDIS_HOST:redis}
@@ -63,6 +77,10 @@ springdoc:
         url: /user-service/v3/api-docs
       - name: "Work Calendar"
         url: /work-calendar/v3/api-docs
+      - name: "Workstation"
+        url: /workstation/v3/api-docs
+      - name: "Employee Service"
+        url: /employee-service/v3/api-docs
   cache:
     disabled: true
 #  api-docs:

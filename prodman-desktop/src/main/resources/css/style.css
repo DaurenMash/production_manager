@@ -195,3 +195,54 @@
 .scroll-bar:horizontal .thumb:hover {
     -fx-background-color: #1a4a7a;
 }
+
+/* ===== Стили для меню (чтобы было видно) ===== */
+.menu-bar {
+    -fx-background-color: #2d2d3f;
+}
+
+.menu-bar .menu {
+    -fx-text-fill: white;
+}
+
+.menu-bar .menu .label {
+    -fx-text-fill: white;
+}
+
+.menu-bar .menu-item {
+    -fx-text-fill: white;
+    -fx-background-color: #2d2d3f;
+}
+
+.menu-bar .menu-item .label {
+    -fx-text-fill: white;
+}
+
+.menu-bar .menu-item:hover {
+    -fx-background-color: #0f3460;
+}
+
+.menu-bar .menu-item:hover .label {
+    -fx-text-fill: white;
+}
+
+.menu-bar .context-menu {
+    -fx-background-color: #2d2d3f;
+}
+
+.menu-bar .menu-item:focused {
+    -fx-background-color: #0f3460;
+}
+
+.menu-bar .menu-item:focused .label {
+    -fx-text-fill: white;
+}
+
+/* Разделитель в меню */
+.menu-bar .separator-menu-item {
+    -fx-background-color: #3d3d5f;
+}
+
+.menu-bar .separator-menu-item .line {
+    -fx-border-color: #3d3d5f;
+}
