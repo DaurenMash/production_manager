@@ -35,6 +35,7 @@
                 <MenuItem onAction="#showShiftSettings" text="Настройки смен" />
                 <MenuItem onAction="#showWorkstationsView" text="Рабочие места" />
                 <MenuItem onAction="#handleProfile" text="Профиль" />
+                <MenuItem onAction="#showTestsView" text="Тестирование" />
                 <MenuItem fx:id="usersMenuItem" onAction="#handleUsers" text="Пользователи" visible="false" />
             </Menu>
             <Menu style="-fx-text-fill: white;" text="Помощь">

@@ -40,6 +40,14 @@ if errorlevel 1 goto error
 
 echo.
 echo ========================================
+echo Building test-service...
+echo ========================================
+cd /d D:\prodman\test-service
+call mvn clean install
+if errorlevel 1 goto error
+
+echo.
+echo ========================================
 echo Stopping containers...
 echo ========================================
 cd /d D:\prodman
@@ -54,6 +62,7 @@ docker rmi -f prodman-work-calendar
 docker rmi -f prodman-api-gateway
 docker rmi -f prodman-workstation
 docker rmi -f prodman-employee-service
+docker rmi -f prodman-test-service
 docker system prune -f
 
 echo.

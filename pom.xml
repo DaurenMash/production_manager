@@ -31,7 +31,7 @@
 
         <!-- Dependency Versions -->
         <jjwt.version>0.12.6</jjwt.version>
-        <liquibase.version>4.29.2</liquibase.version>
+        <liquibase.version>4.23.2</liquibase.version>
         <testcontainers.version>1.20.4</testcontainers.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <javafx.version>21</javafx.version>
@@ -52,6 +52,7 @@
         <module>work-calendar</module>
         <module>workstation</module>
         <module>employee-service</module>
+        <module>test-service</module>
     </modules>
 
     <dependencyManagement>

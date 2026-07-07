@@ -1,5 +1,10 @@
 services:
+
+
+
+  # ============================================
   # PostgreSQL для user-service
+  # ============================================
   user-service-postgres:
     image: postgres:16-alpine
     container_name: user-service-postgres
@@ -13,9 +18,9 @@ services:
       - "${USER_POSTGRES_PORT:-54322}:5432"
     volumes:
       - user-postgres-data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
+#      - ./init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${USER_POSTGRES_USER:-postgres} -d ${USER_POSTGRES_DB:-prodman_users}"]  # ← ЭТО НУЖНО ДОБАВИТЬ
+      test: ["CMD-SHELL", "pg_isready -U ${USER_POSTGRES_USER:-postgres} -d ${USER_POSTGRES_DB:-prodman_users}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -23,8 +28,35 @@ services:
     networks:
       - prodman-network
 
+  # ============================================
+  # PostgreSQL для work-calendar
+  # ============================================
+  work-calendar-postgres:
+    image: postgres:16-alpine
+    container_name: work-calendar-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${WORK_POSTGRES_DB:-prodman_calendar}
+      POSTGRES_USER: ${WORK_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${WORK_POSTGRES_PASSWORD:-password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${WORK_POSTGRES_PORT:-54333}:5432"
+    volumes:
+      - calendar-postgres-data:/var/lib/postgresql/data
+#      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WORK_POSTGRES_USER:-postgres} -d ${WORK_POSTGRES_DB:-prodman_calendar}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - prodman-network
 
-  # ===== PostgreSQL для workstation =====
+  # ============================================
+  # PostgreSQL для workstation
+  # ============================================
   workstation-postgres:
     image: postgres:16-alpine
     container_name: workstation-postgres
@@ -47,7 +79,177 @@ services:
     networks:
       - prodman-network
 
-  # ===== Workstation Service =====
+  # ============================================
+  # PostgreSQL для employee-service
+  # ============================================
+  employee-postgres:
+    image: postgres:16-alpine
+    container_name: employee-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${EMPLOYEE_POSTGRES_DB:-prodman_employees}
+      POSTGRES_USER: ${EMPLOYEE_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${EMPLOYEE_POSTGRES_PASSWORD:-password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${EMPLOYEE_POSTGRES_PORT:-54355}:5432"
+    volumes:
+      - employee-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${EMPLOYEE_POSTGRES_USER:-postgres} -d ${EMPLOYEE_POSTGRES_DB:-prodman_employees}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - prodman-network
+
+  # ============================================
+  # PostgreSQL для test-service
+  # ============================================
+  test-postgres:
+    image: postgres:16-alpine
+    container_name: test-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TEST_POSTGRES_DB:-prodman_tests}
+      POSTGRES_USER: ${TEST_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD:-password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${TEST_POSTGRES_PORT:-54366}:5432"
+    volumes:
+      - test-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER:-postgres} -d ${TEST_POSTGRES_DB:-prodman_tests}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - prodman-network
+
+  # ============================================
+  # Redis
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: prodman-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - prodman-network
+
+  # ============================================
+  # MongoDB
+  # ============================================
+  mongodb:
+    image: mongo:7.0
+    container_name: prodman-mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongodb-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-prodman_logs}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - prodman-network
+
+  # ============================================
+  # User Service
+  # ============================================
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service-app
+    restart: unless-stopped
+    ports:
+      - "${USER_SERVICE_PORT:-8081}:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://user-service-postgres:5432/${USER_POSTGRES_DB:-prodman_users}
+      SPRING_DATASOURCE_USERNAME: ${USER_POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${USER_POSTGRES_PASSWORD:-password}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+      SERVER_PORT: 8081
+      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
+    depends_on:
+      user-service-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - prodman-network
+
+  # ============================================
+  # Work Calendar Service
+  # ============================================
+  work-calendar:
+    build:
+      context: ./work-calendar
+      dockerfile: Dockerfile
+    container_name: work-calendar-app
+    restart: unless-stopped
+    ports:
+      - "${WORK_SERVICE_PORT:-8082}:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://work-calendar-postgres:5432/${WORK_POSTGRES_DB:-prodman_calendar}
+      SPRING_DATASOURCE_USERNAME: ${WORK_POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${WORK_POSTGRES_PASSWORD:-password}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      SERVER_PORT: 8082
+      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
+      EMPLOYEE_SERVICE_URL: http://employee-service-app:8084
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      work-calendar-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - prodman-network
+
+  # ============================================
+  # Workstation Service
+  # ============================================
   workstation:
     build:
       context: ./workstation
@@ -76,162 +278,9 @@ services:
     networks:
       - prodman-network
 
-  # PostgreSQL для work-calendar
-  work-calendar-postgres:
-    image: postgres:16-alpine
-    container_name: work-calendar-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${WORK_POSTGRES_DB:-prodman_calendar}
-      POSTGRES_USER: ${WORK_POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${WORK_POSTGRES_PASSWORD:-password}
-      PGDATA: /var/lib/postgresql/data/pgdata
-    ports:
-      - "${WORK_POSTGRES_PORT:-54333}:5432"
-    volumes:
-      - calendar-postgres-data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${WORK_POSTGRES_USER:-postgres} -d ${WORK_POSTGRES_DB:-prodman_calendar}"]  # ← И ЭТО ТОЖЕ
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    networks:
-      - prodman-network
-
-  # Redis
-  redis:
-    image: redis:7-alpine
-    container_name: prodman-redis
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - prodman-network
-
-  # MongoDB для логов API Gateway
-  mongodb:
-    image: mongo:7.0
-    container_name: prodman-mongodb
-    restart: unless-stopped
-    ports:
-      - "${MONGO_PORT:-27017}:27017"
-    volumes:
-      - mongodb-data:/data/db
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
-      MONGO_INITDB_DATABASE: ${MONGO_DB:-prodman_logs}
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    networks:
-      - prodman-network
-
-  # User Service
-  user-service:
-    build:
-      context: ./user-service
-      dockerfile: Dockerfile
-    container_name: user-service-app
-    restart: unless-stopped
-    ports:
-      - "${USER_SERVICE_PORT:-8081}:8081"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      SPRING_DATASOURCE_URL: jdbc:postgresql://user-service-postgres:5432/${USER_POSTGRES_DB:-prodman_users}
-      SPRING_DATASOURCE_USERNAME: ${USER_POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${USER_POSTGRES_PASSWORD:-password}
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
-      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
-      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
-      SERVER_PORT: 8081
-      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
-    depends_on:
-      user-service-postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - prodman-network
-
-  # Work Calendar Service
-  work-calendar:
-    build:
-      context: ./work-calendar
-      dockerfile: Dockerfile
-    container_name: work-calendar-app
-    restart: unless-stopped
-    ports:
-      - "${WORK_SERVICE_PORT:-8082}:8082"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      SPRING_DATASOURCE_URL: jdbc:postgresql://work-calendar-postgres:5432/${WORK_POSTGRES_DB:-prodman_calendar}
-      SPRING_DATASOURCE_USERNAME: ${WORK_POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${WORK_POSTGRES_PASSWORD:-password}
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
-      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      SERVER_PORT: 8082
-      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    depends_on:
-      work-calendar-postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - prodman-network
-  # PostgreSQL для employee-service
-  employee-postgres:
-    image: postgres:16-alpine
-    container_name: employee-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${EMPLOYEE_POSTGRES_DB:-prodman_employees}
-      POSTGRES_USER: ${EMPLOYEE_POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${EMPLOYEE_POSTGRES_PASSWORD:-password}
-      PGDATA: /var/lib/postgresql/data/pgdata
-    ports:
-      - "${EMPLOYEE_POSTGRES_PORT:-54355}:5432"
-    volumes:
-      - employee-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${EMPLOYEE_POSTGRES_USER:-postgres} -d ${EMPLOYEE_POSTGRES_DB:-prodman_employees}" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    networks:
-      - prodman-network
-
+  # ============================================
   # Employee Service
+  # ============================================
   employee-service:
     build:
       context: ./employee-service
@@ -248,7 +297,7 @@ services:
       SERVER_PORT: 8084
       SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8084/actuator/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -259,9 +308,39 @@ services:
     networks:
       - prodman-network
 
+  # ============================================
+  # Test Service
+  # ============================================
+  test-service:
+    build:
+      context: ./test-service
+      dockerfile: Dockerfile
+    container_name: test-service-app
+    restart: unless-stopped
+    ports:
+      - "${TEST_SERVICE_PORT:-8085}:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://test-postgres:5432/${TEST_POSTGRES_DB:-prodman_tests}
+      SPRING_DATASOURCE_USERNAME: ${TEST_POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${TEST_POSTGRES_PASSWORD:-password}
+      SERVER_PORT: 8085
+      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    networks:
+      - prodman-network
 
-
+  # ============================================
   # API Gateway
+  # ============================================
   api-gateway:
     build:
       context: ./prodman-api-gateway
@@ -274,6 +353,9 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       USER_SERVICE_URL: http://user-service-app:8081
       WORK_CALENDAR_URL: http://work-calendar-app:8082
+      WORKSTATION_SERVICE_URL: http://workstation-app:8083
+      EMPLOYEE_SERVICE_URL: http://employee-service-app:8084
+      TEST_SERVICE_URL: http://test-service-app:8085
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
       SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -287,15 +369,24 @@ services:
       - redis
       - user-service
       - work-calendar
+      - workstation
+      - employee-service
+      - test-service
       - mongodb
     networks:
       - prodman-network
 
+# ============================================
+# Networks
+# ============================================
 networks:
   prodman-network:
     name: prodman-network
     driver: bridge
 
+# ============================================
+# Volumes
+# ============================================
 volumes:
   user-postgres-data:
     name: user-service-postgres-data
@@ -303,9 +394,11 @@ volumes:
     name: work-calendar-postgres-data
   workstation-postgres-data:
     name: workstation-postgres-data
+  employee-postgres-data:
+    name: employee-postgres-data
+  test-postgres-data:
+    name: test-postgres-data
   redis-data:
     name: prodman-redis-data
   mongodb-data:
     name: prodman-mongodb-data
-  employee-postgres-data:
-    name: employee-postgres-data

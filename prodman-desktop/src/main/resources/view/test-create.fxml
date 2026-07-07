@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.TestCreateController"
+      spacing="15" style="-fx-background-color: #ffffff;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Text text="Создание теста" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+
+    <Label text="Название теста:"/>
+    <TextField fx:id="titleField" promptText="Введите название..."/>
+
+    <Label text="Описание:"/>
+    <TextArea fx:id="descriptionArea" prefHeight="60" promptText="Краткое описание теста..."/>
+
+    <Label text="Вопросы:"/>
+    <ScrollPane VBox.vgrow="ALWAYS">
+        <VBox fx:id="questionsContainer" spacing="15" style="-fx-padding: 10;"/>
+    </ScrollPane>
+
+    <Button fx:id="addQuestionButton" text="➕ Добавить вопрос" style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
+
+    <HBox spacing="10">
+        <Button fx:id="saveButton" text="💾 Сохранить" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button fx:id="cancelButton" text="Отмена" style="-fx-background-color: #9E9E9E; -fx-text-fill: white;"/>
+    </HBox>
+
+    <Label fx:id="messageLabel" wrapText="true"/>
+</VBox>
