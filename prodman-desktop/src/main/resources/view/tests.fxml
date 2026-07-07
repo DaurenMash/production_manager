@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.TestController"
+      spacing="15" style="-fx-background-color: #ffffff;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Text text="Тестирование сотрудников" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="➕ Создать тест" onAction="#handleCreateTest" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button text="🔄 Обновить" onAction="#handleRefresh" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;"/>
+    </HBox>
+
+    <TabPane>
+        <Tab text="Доступные тесты">
+            <TableView fx:id="testsTable" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="colTitle" text="Название" prefWidth="200"/>
+                    <TableColumn fx:id="colDescription" text="Описание" prefWidth="300"/>
+                    <TableColumn fx:id="colQuestions" text="Вопросов" prefWidth="80"/>
+                    <TableColumn fx:id="colAction" text="Действие" prefWidth="120"/>
+                </columns>
+            </TableView>
+        </Tab>
+        <Tab text="Мои результаты">
+            <TableView fx:id="resultsTable" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="colTestName" text="Тест" prefWidth="200"/>
+                    <TableColumn fx:id="colScore" text="Результат" prefWidth="100"/>
+                    <TableColumn fx:id="colStatus" text="Статус" prefWidth="100"/>
+                    <TableColumn fx:id="colDate" text="Дата" prefWidth="150"/>
+                </columns>
+            </TableView>
+        </Tab>
+    </TabPane>
+</VBox>

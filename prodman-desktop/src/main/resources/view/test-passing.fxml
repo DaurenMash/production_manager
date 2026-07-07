@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.prodman.desktop.controller.TestPassingController"
+      spacing="15" style="-fx-background-color: #ffffff;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Text fx:id="titleLabel" style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+
+    <HBox alignment="CENTER">
+        <Label text="Вопрос: "/>
+        <Label fx:id="progressLabel" style="-fx-font-weight: bold;"/>
+    </HBox>
+
+    <ScrollPane VBox.vgrow="ALWAYS">
+        <VBox fx:id="questionsContainer" spacing="10" style="-fx-padding: 10;"/>
+    </ScrollPane>
+
+    <HBox spacing="10" alignment="CENTER">
+        <Button fx:id="prevButton" text="◀ Назад"/>
+        <Button fx:id="nextButton" text="Вперед ▶"/>
+        <Button fx:id="submitButton" text="📤 Завершить" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;" visible="false"/>
+    </HBox>
+
+</VBox>

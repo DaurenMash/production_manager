@@ -45,6 +45,13 @@ spring:
           filters:
             - StripPrefix=1
 
+        - id: test-service-route
+          uri: http://test-service-app:8085
+          predicates:
+            - Path=/test-service/**
+          filters:
+            - StripPrefix=1
+
   data:
     redis:
       host: ${REDIS_HOST:redis}
@@ -81,6 +88,8 @@ springdoc:
         url: /workstation/v3/api-docs
       - name: "Employee Service"
         url: /employee-service/v3/api-docs
+      - name: "Test Service"
+        url: /test-service/v3/api-docs
   cache:
     disabled: true
 #  api-docs:

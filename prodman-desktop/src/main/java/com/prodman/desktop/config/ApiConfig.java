@@ -44,6 +44,15 @@ public class ApiConfig {
     public static final String WORKSTATIONS_ACTIVE = WORKSTATIONS + "/active";
     public static final String WORKSTATIONS_EMPLOYEES = WORKSTATIONS + "/%s/employees";
 
+    // ===== Test Service =====
+    private static final String TEST_PATH = "/test-service";
+
+    public static final String TESTS = BASE_URL + TEST_PATH + "/api/v1/tests";
+    public static final String TEST_RESULTS = BASE_URL + TEST_PATH + "/api/v1/test-results";
+    public static final String TEST_RESULTS_SUBMIT = TEST_RESULTS + "/submit";
+    public static final String TEST_RESULTS_BY_TEST = TEST_RESULTS + "/test/%s";
+    public static final String TEST_RESULTS_BY_EMPLOYEE = TEST_RESULTS + "/employee/%s";
+
     // ===== Demo =====
     public static final String DEMO_DASHBOARD = BASE_URL + USER_PATH + API_V1 + "/demo/dashboard";
     public static final String DEMO_FEATURES = BASE_URL + USER_PATH + API_V1 + "/demo/features";

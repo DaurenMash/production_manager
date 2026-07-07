@@ -131,6 +131,11 @@ public class MainController {
     }
 
     @FXML
+    public void showTestsView() {
+        loadView("/view/tests.fxml", "Тестирование");
+    }
+
+    @FXML
     public void showSettingsView() {
         setActiveButton(settingsButton);
         loadView("/view/settings.fxml", "Настройки");
