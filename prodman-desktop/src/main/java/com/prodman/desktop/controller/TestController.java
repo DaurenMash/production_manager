@@ -127,38 +127,19 @@ public class TestController {
         }
 
         try {
-            // ⚠️ ЗАГЛУШКА: пока нет API для списка тестов
-            // TODO: заменить на реальный запрос
-            testsList.clear();
-            
-            // Временные тестовые данные
-            Map<String, Object> test1 = Map.of(
-                "id", "1",
-                "title", "Техника безопасности",
-                "description", "Проверка знаний по технике безопасности на производстве",
-                "questions", List.of(Map.of(), Map.of(), Map.of())
-            );
-            Map<String, Object> test2 = Map.of(
-                "id", "2",
-                "title", "Работа с оборудованием",
-                "description", "Знание правил работы со станками",
-                "questions", List.of(Map.of(), Map.of(), Map.of(), Map.of())
-            );
-            testsList.addAll(List.of(test1, test2));
-
-            /* ❌ Реальный код (закомментирован)
+            // ✅ РАСКОММЕНТИРУЙТЕ ЭТОТ БЛОК
             Request request = new Request.Builder()
-                .url(ApiConfig.TESTS)
-                .header("Authorization", "Bearer " + token)
-                .get()
-                .build();
+                    .url(ApiConfig.TESTS)
+                    .header("Authorization", "Bearer " + token)
+                    .get()
+                    .build();
 
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) {
                     String json = response.body().string();
                     List<Map<String, Object>> list = mapper.readValue(
-                        json,
-                        new TypeReference<List<Map<String, Object>>>() {}
+                            json,
+                            new TypeReference<List<Map<String, Object>>>() {}
                     );
                     testsList.clear();
                     testsList.addAll(list);
@@ -166,7 +147,6 @@ public class TestController {
                     showError("Ошибка загрузки тестов: " + response.code());
                 }
             }
-            */
 
         } catch (Exception e) {
             log.error("Error loading tests", e);
@@ -183,46 +163,26 @@ public class TestController {
         }
 
         try {
-            // ⚠️ ЗАГЛУШКА: пока нет API
-            // TODO: заменить на реальный запрос
-            resultsList.clear();
-            
-            // Временные тестовые данные
-            Map<String, Object> result1 = Map.of(
-                "testTitle", "Техника безопасности",
-                "score", 85.0,
-                "passed", true,
-                "completedAt", "2026-07-05T10:30:00"
-            );
-            Map<String, Object> result2 = Map.of(
-                "testTitle", "Работа с оборудованием",
-                "score", 45.0,
-                "passed", false,
-                "completedAt", "2026-07-04T14:20:00"
-            );
-            resultsList.addAll(List.of(result1, result2));
-
-            /* ❌ Реальный код (закомментирован)
+            // ✅ РАСКОММЕНТИРУЙТЕ
             String employeeId = TokenManager.getUserId();
             String url = ApiConfig.TEST_RESULTS_BY_EMPLOYEE + employeeId;
             Request request = new Request.Builder()
-                .url(url)
-                .header("Authorization", "Bearer " + token)
-                .get()
-                .build();
+                    .url(url)
+                    .header("Authorization", "Bearer " + token)
+                    .get()
+                    .build();
 
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) {
                     String json = response.body().string();
                     List<Map<String, Object>> list = mapper.readValue(
-                        json,
-                        new TypeReference<List<Map<String, Object>>>() {}
+                            json,
+                            new TypeReference<List<Map<String, Object>>>() {}
                     );
                     resultsList.clear();
                     resultsList.addAll(list);
                 }
             }
-            */
 
         } catch (Exception e) {
             log.error("Error loading results", e);

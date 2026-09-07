@@ -1,0 +1,100 @@
+{{- if .Values.workCalendar.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: work-calendar
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: work-calendar
+spec:
+  replicas: {{ .Values.workCalendar.replicas }}
+  selector:
+    matchLabels:
+      app: work-calendar
+  template:
+    metadata:
+      labels:
+        app: work-calendar
+    spec:
+      containers:
+        - name: work-calendar
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.workCalendar.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.workCalendar.targetPort }}
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.workCalendar.env.SPRING_PROFILES_ACTIVE }}
+            - name: SERVER_PORT
+              value: {{ .Values.workCalendar.env.SERVER_PORT | quote }}
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgresql:5432/prodman_calendar"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: {{ .Values.postgresql.username | quote }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: prodman-secrets
+                  key: postgres-password
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: EMPLOYEE_SERVICE_URL
+              value: "http://employee-service-app:8084"
+          resources:
+            {{- toYaml .Values.workCalendar.resources | nindent 12 }}
+          {{- if .Values.workCalendar.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.workCalendar.livenessProbe.path }}
+              port: {{ .Values.workCalendar.targetPort }}
+            initialDelaySeconds: {{ .Values.workCalendar.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.workCalendar.livenessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.workCalendar.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.workCalendar.readinessProbe.path }}
+              port: {{ .Values.workCalendar.targetPort }}
+            initialDelaySeconds: {{ .Values.workCalendar.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.workCalendar.readinessProbe.periodSeconds }}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: work-calendar
+  namespace: {{ .Values.namespace.name }}
+spec:
+  selector:
+    app: work-calendar
+  ports:
+    - port: {{ .Values.workCalendar.port }}
+      targetPort: {{ .Values.workCalendar.targetPort }}
+      name: http
+  type: ClusterIP
+---
+{{- if .Values.workCalendar.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: work-calendar-hpa
+  namespace: {{ .Values.namespace.name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: work-calendar
+  minReplicas: {{ .Values.workCalendar.hpa.minReplicas }}
+  maxReplicas: {{ .Values.workCalendar.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.workCalendar.hpa.targetCPUUtilizationPercentage }}
+{{- end }}
+{{- end }}
