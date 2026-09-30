@@ -48,7 +48,6 @@
     <modules>
         <module>user-service</module>
         <module>prodman-api-gateway</module>
-        <module>prodman-desktop</module>
         <module>work-calendar</module>
         <module>workstation</module>
         <module>employee-service</module>
