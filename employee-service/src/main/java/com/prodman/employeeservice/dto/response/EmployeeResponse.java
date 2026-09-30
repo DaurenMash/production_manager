@@ -18,9 +18,12 @@ public class EmployeeResponse {
     private String lastName;
     private String email;
     private String phoneNumber;
-    private String department;
-    private String position;
+
+    private PositionResponse position;
+    private DepartmentResponse department;
+
     private EmployeeStatus status;
+    private Integer maxConsecutiveHours;
     private String userId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

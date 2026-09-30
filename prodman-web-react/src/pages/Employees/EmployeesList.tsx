@@ -1,5 +1,4 @@
-﻿// Импорты React и Ant Design
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import {
   Typography,
   Table,
@@ -13,6 +12,8 @@ import {
   Form,
   Popconfirm,
   message,
+  Select,
+  InputNumber,
 } from 'antd';
 import {
   PlusOutlined,
@@ -22,39 +23,44 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 
-// Импорты нашего API
 import { employeesApi } from '../../api/employees.api';
-import type { Employee, CreateEmployeeRequest } from '../../api/employees.api';
+import type { Employee, CreateEmployeeRequest, EmployeeStatus } from '../../api/employees.api';
+import { positionsApi } from '../../api/positions.api';
+import type { Position } from '../../api/positions.api';
+import { departmentsApi } from '../../api/departments.api';
+import type { Department } from '../../api/departments.api';
 
 const { Title } = Typography;
 
-// Список возможных статусов (совпадает с EmployeeStatus.java)
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: { value: EmployeeStatus; label: string; color: string }[] = [
   { value: 'AVAILABLE', label: 'Доступен', color: 'green' },
-  { value: 'ON_VACATION', label: 'В отпуске', color: 'orange' },
+  { value: 'BUSY', label: 'Занят', color: 'blue' },
+  { value: 'VACATION', label: 'В отпуске', color: 'orange' },
   { value: 'SICK_LEAVE', label: 'Больничный', color: 'red' },
-  { value: 'FIRED', label: 'Уволен', color: 'gray' },
+  { value: 'UNAVAILABLE', label: 'Недоступен', color: 'gray' },
 ];
 
 const EmployeesList = () => {
-  // === Состояния ===
-  const [employees, setEmployees] = useState<Employee[]>([]);   // список сотрудников
-  const [loading, setLoading] = useState(true);                  // индикатор загрузки
-  const [error, setError] = useState('');                        // ошибка загрузки
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const [searchEmail, setSearchEmail] = useState('');            // поиск по email
-  const [modalOpen, setModalOpen] = useState(false);             // открыта ли модалка
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null); // редактируемый сотрудник
-  const [saving, setSaving] = useState(false);                   // сохранение
-  const [form] = Form.useForm();                                  // управление формой
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
 
-  // === Загрузка всех сотрудников ===
+  const [searchEmail, setSearchEmail] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form] = Form.useForm();
+
+  // === Загрузка данных ===
   const loadEmployees = async () => {
     setLoading(true);
     setError('');
     try {
       const data = await employeesApi.getAll();
-      setEmployees(Array.isArray(data) ? data : [data]);
+      setEmployees(Array.isArray(data) ? data : []);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Ошибка загрузки');
     } finally {
@@ -62,11 +68,25 @@ const EmployeesList = () => {
     }
   };
 
+  const loadDictionaries = async () => {
+    try {
+      const [pos, dep] = await Promise.all([
+        positionsApi.getAll(),
+        departmentsApi.getAll(),
+      ]);
+      setPositions(pos);
+      setDepartments(dep);
+    } catch (err) {
+      message.error('Ошибка загрузки справочников');
+    }
+  };
+
   useEffect(() => {
     loadEmployees();
+    loadDictionaries();
   }, []);
 
-  // === Поиск по email ===
+  // === Поиск ===
   const handleSearch = async () => {
     if (!searchEmail.trim()) {
       loadEmployees();
@@ -85,20 +105,19 @@ const EmployeesList = () => {
     }
   };
 
-  // === Сброс поиска ===
   const handleResetSearch = () => {
     setSearchEmail('');
     loadEmployees();
   };
 
-  // === Открыть модалку создания ===
+  // === Модалка ===
   const handleCreate = () => {
     setEditingEmployee(null);
     form.resetFields();
+    form.setFieldsValue({ maxConsecutiveHours: 12 });
     setModalOpen(true);
   };
 
-  // === Открыть модалку редактирования ===
   const handleEdit = (employee: Employee) => {
     setEditingEmployee(employee);
     form.setFieldsValue({
@@ -106,24 +125,23 @@ const EmployeesList = () => {
       lastName: employee.lastName,
       email: employee.email,
       phoneNumber: employee.phoneNumber,
-      department: employee.department,
-      position: employee.position,
+      positionId: employee.position?.id,
+      departmentId: employee.department?.id,
+      status: employee.status,
+      maxConsecutiveHours: employee.maxConsecutiveHours,
     });
     setModalOpen(true);
   };
 
-  // === Сохранить (создать или обновить) ===
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
       setSaving(true);
 
       if (editingEmployee) {
-        // Обновляем
         await employeesApi.update(editingEmployee.id, values);
         message.success('Сотрудник обновлён');
       } else {
-        // Создаём
         await employeesApi.create(values as CreateEmployeeRequest);
         message.success('Сотрудник создан');
       }
@@ -132,14 +150,13 @@ const EmployeesList = () => {
       form.resetFields();
       loadEmployees();
     } catch (err: any) {
-      if (err.errorFields) return; // ошибки валидации формы — не показываем
+      if (err.errorFields) return;
       message.error(err.response?.data?.message || 'Ошибка сохранения');
     } finally {
       setSaving(false);
     }
   };
 
-  // === Удалить сотрудника ===
   const handleDelete = async (id: string) => {
     try {
       await employeesApi.delete(id);
@@ -150,23 +167,38 @@ const EmployeesList = () => {
     }
   };
 
-  // === Колонки таблицы ===
+  // === Колонки ===
   const columns = [
     { title: 'Имя', dataIndex: 'firstName', key: 'firstName' },
     { title: 'Фамилия', dataIndex: 'lastName', key: 'lastName' },
     { title: 'Email', dataIndex: 'email', key: 'email' },
-    { title: 'Отдел', dataIndex: 'department', key: 'department' },
+    {
+      title: 'Отдел',
+      dataIndex: 'department',
+      key: 'department',
+      render: (dep: Employee['department']) =>
+          dep ? (
+              <Tag color={dep.color}>{dep.name}</Tag>
+          ) : (
+              '—'
+          ),
+    },
     {
       title: 'Должность',
       dataIndex: 'position',
       key: 'position',
-      render: (v: string | null) => v || '—',
+      render: (pos: Employee['position']) =>
+          pos ? (
+              <Tag color={pos.color}>{pos.name}</Tag>
+          ) : (
+              '—'
+          ),
     },
     {
       title: 'Статус',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => {
+      render: (status: EmployeeStatus) => {
         const opt = STATUS_OPTIONS.find(o => o.value === status);
         return <Tag color={opt?.color || 'default'}>{opt?.label || status}</Tag>;
       },
@@ -195,7 +227,6 @@ const EmployeesList = () => {
     },
   ];
 
-  // === Рендер ===
   if (loading && employees.length === 0) {
     return <Spin size="large" style={{ display: 'block', marginTop: 100 }} />;
   }
@@ -206,7 +237,6 @@ const EmployeesList = () => {
           Управление работниками
         </Title>
 
-        {/* Панель поиска и кнопок */}
         <Space style={{ marginBottom: 16 }} wrap>
           <Input
               placeholder="Поиск по email"
@@ -232,17 +262,10 @@ const EmployeesList = () => {
           </Button>
         </Space>
 
-        {/* Ошибка */}
         {error && (
-            <Alert
-                message={error}
-                type="error"
-                showIcon
-                style={{ marginBottom: 16 }}
-            />
+            <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />
         )}
 
-        {/* Таблица */}
         <Table
             dataSource={employees}
             columns={columns}
@@ -251,7 +274,6 @@ const EmployeesList = () => {
             pagination={{ pageSize: 10 }}
         />
 
-        {/* Модалка создания/редактирования */}
         <Modal
             title={editingEmployee ? 'Редактирование сотрудника' : 'Новый сотрудник'}
             open={modalOpen}
@@ -260,7 +282,7 @@ const EmployeesList = () => {
             confirmLoading={saving}
             okText="Сохранить"
             cancelText="Отмена"
-            width={600}
+            width={700}
         >
           <Form form={form} layout="vertical">
             <Form.Item
@@ -294,12 +316,46 @@ const EmployeesList = () => {
               <Input />
             </Form.Item>
 
-            <Form.Item name="department" label="Отдел">
-              <Input />
+            <Form.Item name="departmentId" label="Отдел">
+              <Select
+                  placeholder="Выберите отдел"
+                  allowClear
+                  options={departments.map(d => ({
+                    value: d.id,
+                    label: d.name,
+                  }))}
+              />
             </Form.Item>
 
-            <Form.Item name="position" label="Должность">
-              <Input />
+            <Form.Item name="positionId" label="Должность">
+              <Select
+                  placeholder="Выберите должность"
+                  allowClear
+                  options={positions.map(p => ({
+                    value: p.id,
+                    label: p.name,
+                  }))}
+              />
+            </Form.Item>
+
+            {editingEmployee && (
+                <Form.Item name="status" label="Статус">
+                  <Select
+                      placeholder="Выберите статус"
+                      options={STATUS_OPTIONS.map(s => ({
+                        value: s.value,
+                        label: s.label,
+                      }))}
+                  />
+                </Form.Item>
+            )}
+
+            <Form.Item
+                name="maxConsecutiveHours"
+                label="Максимум часов подряд"
+                tooltip="По умолчанию 12 часов"
+            >
+              <InputNumber min={1} max={24} style={{ width: '100%' }} />
             </Form.Item>
           </Form>
         </Modal>

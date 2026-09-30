@@ -8,6 +8,8 @@ import TestsList from '../pages/Tests/TestsList';
 import WorkCalendar from '../pages/Calendar/WorkCalendar';
 import WorkstationsList from '../pages/Workstations/WorkstationsList';
 import UsersList from '../pages/Users/UsersList';
+import PositionsList from '../pages/Dictionaries/Positions/PositionsList';
+import DepartmentsList from '../pages/Dictionaries/Departments/DepartmentsList';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 
 export const router = createBrowserRouter([
@@ -30,6 +32,9 @@ export const router = createBrowserRouter([
           { path: 'calendar', element: <WorkCalendar /> },
           { path: 'workstations', element: <WorkstationsList /> },
           { path: 'users', element: <UsersList /> },
+          // Справочники
+          { path: 'dictionaries/positions', element: <PositionsList /> },
+          { path: 'dictionaries/departments', element: <DepartmentsList /> },
         ],
       },
     ],

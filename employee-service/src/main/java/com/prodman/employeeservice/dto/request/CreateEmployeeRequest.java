@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateEmployeeRequest {
+
     @NotBlank(message = "Имя обязательно")
     private String firstName;
 
@@ -23,8 +24,12 @@ public class CreateEmployeeRequest {
     private String email;
 
     private String phoneNumber;
-    private String department;
-    private String position;
 
-    private String userId; // опционально — если сотрудник является пользователем
+    private String departmentId;
+
+    private String positionId;
+
+    private Integer maxConsecutiveHours;
+
+    private String userId;
 }

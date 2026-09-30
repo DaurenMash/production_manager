@@ -11,11 +11,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateEmployeeRequest {
+
     private String firstName;
     private String lastName;
     private String phoneNumber;
-    private String department;
-    private String position;
+    private String departmentId;
+    private String positionId;
     private EmployeeStatus status;
+    private Integer maxConsecutiveHours;
     private String userId;
 }

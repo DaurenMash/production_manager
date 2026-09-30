@@ -1,14 +1,34 @@
 ﻿import apiClient from './client';
 
+export interface PositionInfo {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface DepartmentInfo {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export type EmployeeStatus =
+    | 'AVAILABLE'
+    | 'BUSY'
+    | 'VACATION'
+    | 'SICK_LEAVE'
+    | 'UNAVAILABLE';
+
 export interface Employee {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
   phoneNumber: string;
-  department: string;
-  position: string | null;
-  status: string;
+  department: DepartmentInfo | null;
+  position: PositionInfo | null;
+  status: EmployeeStatus;
+  maxConsecutiveHours: number;
   userId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -19,12 +39,15 @@ export interface CreateEmployeeRequest {
   lastName: string;
   email: string;
   phoneNumber?: string;
-  department?: string;
-  position?: string;
-  status?: string;
+  departmentId?: string;
+  positionId?: string;
+  maxConsecutiveHours?: number;
+  userId?: string;
 }
 
-export type UpdateEmployeeRequest = Partial<CreateEmployeeRequest>;
+export type UpdateEmployeeRequest = Partial<CreateEmployeeRequest> & {
+  status?: EmployeeStatus;
+};
 
 export const employeesApi = {
   getAll: (): Promise<Employee[]> =>
@@ -36,7 +59,7 @@ export const employeesApi = {
   getByEmail: (email: string): Promise<Employee> =>
       apiClient.get(`/employee-service/api/v1/employees/email/${email}`).then(res => res.data),
 
-  getByStatus: (status: string): Promise<Employee[]> =>
+  getByStatus: (status: EmployeeStatus): Promise<Employee[]> =>
       apiClient.get(`/employee-service/api/v1/employees/status/${status}`).then(res => res.data),
 
   create: (data: CreateEmployeeRequest): Promise<Employee> =>

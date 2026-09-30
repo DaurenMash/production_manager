@@ -113,3 +113,12 @@ node_modules/
 
 # === Helm ===
 prodman-helm/project_structure.txt
+
+
+# --- Local / temp files ---
+prodman_tree.txt
+employee-service/pos*.json
+
+# --- Maven archetype leftovers ---
+**/src/main/resources/archetype-resources/
+**/src/main/resources/META-INF/maven/archetype.xml

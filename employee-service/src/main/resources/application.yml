@@ -8,15 +8,14 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
   liquibase:
-    enabled: true
-    change-log: classpath:/db/changelog/db.changelog-master.xml
+    enabled: false
 
 server:
   port: ${SERVER_PORT:8084}
@@ -24,8 +23,8 @@ server:
 logging:
   level:
     com.prodman.employee: DEBUG
-    org.springframework.web: DEBUG
-    liquibase: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
 
 springdoc:
   api-docs:
