@@ -6,43 +6,44 @@ import com.prodman.employeeservice.dto.response.PositionResponse;
 import com.prodman.employeeservice.service.PositionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/positions")
+@RequestMapping("/api/positions")
 @RequiredArgsConstructor
 public class PositionController {
 
     private final PositionService positionService;
 
-    @PostMapping
-    public ResponseEntity<PositionResponse> create(@Valid @RequestBody CreatePositionRequest request) {
-        return ResponseEntity.ok(positionService.createPosition(request));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<PositionResponse> update(
-            @PathVariable String id,
-            @Valid @RequestBody UpdatePositionRequest request) {
-        return ResponseEntity.ok(positionService.updatePosition(id, request));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        positionService.deletePosition(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @GetMapping
-    public ResponseEntity<List<PositionResponse>> getAll() {
-        return ResponseEntity.ok(positionService.getAllPositions());
+    public ResponseEntity<Page<PositionResponse>> list(Pageable pageable) {
+        return ResponseEntity.ok(positionService.list(pageable));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PositionResponse> getById(@PathVariable String id) {
-        return ResponseEntity.ok(positionService.getPositionById(id));
+    public ResponseEntity<PositionResponse> get(@PathVariable UUID id) {
+        return ResponseEntity.ok(positionService.get(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<PositionResponse> create(@Valid @RequestBody CreatePositionRequest req) {
+        return ResponseEntity.ok(positionService.create(req));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<PositionResponse> update(@PathVariable UUID id,
+                                                   @Valid @RequestBody UpdatePositionRequest req) {
+        return ResponseEntity.ok(positionService.update(id, req));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        positionService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

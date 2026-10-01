@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UpdatePositionRequest {
+public class CreateQualificationRequest {
 
     @NotBlank
     @Size(max = 64)

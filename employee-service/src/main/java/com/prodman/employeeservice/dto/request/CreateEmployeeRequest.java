@@ -1,11 +1,15 @@
 package com.prodman.employeeservice.dto.request;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -13,23 +17,32 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateEmployeeRequest {
 
-    @NotBlank(message = "Имя обязательно")
+    @NotBlank
+    @Size(max = 64)
+    private String code;
+
+    @NotBlank
+    @Size(max = 100)
     private String firstName;
 
-    @NotBlank(message = "Фамилия обязательна")
+    @NotBlank
+    @Size(max = 100)
     private String lastName;
 
-    @NotBlank(message = "Email обязателен")
-    @Email(message = "Неверный формат email")
-    private String email;
+    @Size(max = 100)
+    private String middleName;
 
-    private String phoneNumber;
+    /** 10 цифр, без +7. Бэкенд сам добавляет +7. */
+    @NotBlank
+    @Pattern(regexp = "\\d{10}", message = "Телефон: 10 цифр без +7")
+    private String phone;
 
-    private String departmentId;
+    private LocalDate hiredAt;
+    private LocalDate firedAt;
 
-    private String positionId;
+    private UUID departmentId;
+    private UUID positionId;
+    private UUID userId;
 
     private Integer maxConsecutiveHours;
-
-    private String userId;
 }

@@ -5,79 +5,85 @@ import com.prodman.employeeservice.dto.request.UpdatePositionRequest;
 import com.prodman.employeeservice.dto.response.PositionResponse;
 import com.prodman.employeeservice.model.Position;
 import com.prodman.employeeservice.repository.PositionRepository;
+import com.prodman.employeeservice.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class PositionService {
 
-    private final PositionRepository positionRepository;
+    private final PositionRepository repository;
 
-    @Transactional
-    public PositionResponse createPosition(CreatePositionRequest request) {
-        if (positionRepository.existsByName(request.getName())) {
-            throw new RuntimeException("Position with name '" + request.getName() + "' already exists");
-        }
+    @Transactional(readOnly = true)
+    public Page<PositionResponse> list(Pageable pageable) {
+        UUID tenantId = TenantContext.require();
+        return repository.findAllByTenantId(tenantId, pageable).map(this::toResponse);
+    }
 
-        Position position = Position.builder()
-            .name(request.getName())
-            .color(request.getColor() != null ? request.getColor() : "#3498db")
-            .build();
-
-        return toResponse(positionRepository.save(position));
+    @Transactional(readOnly = true)
+    public PositionResponse get(UUID id) {
+        UUID tenantId = TenantContext.require();
+        Position p = repository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("Position not found: " + id));
+        return toResponse(p);
     }
 
     @Transactional
-    public PositionResponse updatePosition(String id, UpdatePositionRequest request) {
-        Position position = positionRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Position not found: " + id));
-
-        if (request.getName() != null && !request.getName().equals(position.getName())) {
-            if (positionRepository.existsByName(request.getName())) {
-                throw new RuntimeException("Position with name '" + request.getName() + "' already exists");
-            }
-            position.setName(request.getName());
+    public PositionResponse create(CreatePositionRequest req) {
+        UUID tenantId = TenantContext.require();
+        if (repository.existsByTenantIdAndCode(tenantId, req.getCode())) {
+            throw new IllegalArgumentException("Position code already exists: " + req.getCode());
         }
-
-        if (request.getColor() != null) {
-            position.setColor(request.getColor());
-        }
-
-        return toResponse(positionRepository.save(position));
+        Position p = Position.builder()
+                .tenantId(tenantId)
+                .code(req.getCode())
+                .name(req.getName())
+                .description(req.getDescription())
+                .isActive(req.getIsActive() == null ? Boolean.TRUE : req.getIsActive())
+                .build();
+        return toResponse(repository.save(p));
     }
 
     @Transactional
-    public void deletePosition(String id) {
-        if (!positionRepository.existsById(id)) {
-            throw new RuntimeException("Position not found: " + id);
+    public PositionResponse update(UUID id, UpdatePositionRequest req) {
+        UUID tenantId = TenantContext.require();
+        Position p = repository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("Position not found: " + id));
+        if (repository.existsByTenantIdAndCodeAndIdNot(tenantId, req.getCode(), id)) {
+            throw new IllegalArgumentException("Position code already exists: " + req.getCode());
         }
-        positionRepository.deleteById(id);
+        p.setCode(req.getCode());
+        p.setName(req.getName());
+        p.setDescription(req.getDescription());
+        if (req.getIsActive() != null) {
+            p.setIsActive(req.getIsActive());
+        }
+        return toResponse(repository.save(p));
     }
 
-    public List<PositionResponse> getAllPositions() {
-        return positionRepository.findAll().stream()
-            .map(this::toResponse)
-            .collect(Collectors.toList());
+    @Transactional
+    public void delete(UUID id) {
+        UUID tenantId = TenantContext.require();
+        Position p = repository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("Position not found: " + id));
+        repository.delete(p);
     }
 
-    public PositionResponse getPositionById(String id) {
-        Position position = positionRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Position not found: " + id));
-        return toResponse(position);
-    }
-
-    private PositionResponse toResponse(Position position) {
+    private PositionResponse toResponse(Position p) {
         return PositionResponse.builder()
-            .id(position.getId())
-            .name(position.getName())
-            .color(position.getColor())
-            .createdAt(position.getCreatedAt())
-            .updatedAt(position.getUpdatedAt())
-            .build();
+                .id(p.getId())
+                .code(p.getCode())
+                .name(p.getName())
+                .description(p.getDescription())
+                .isActive(p.getIsActive())
+                .createdAt(p.getCreatedAt())
+                .updatedAt(p.getUpdatedAt())
+                .build();
     }
 }

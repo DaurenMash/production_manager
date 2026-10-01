@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -12,12 +13,16 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PositionResponse {
+public class EmployeeQualificationResponse {
     private UUID id;
-    private String code;
-    private String name;
-    private String description;
-    private Boolean isActive;
+    private UUID employeeId;
+    private UUID qualificationId;
+    private String qualificationCode;
+    private String qualificationName;
+    private Integer level;
+    private LocalDate assignedAt;
+    private UUID assignedBy;
+    private String notes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

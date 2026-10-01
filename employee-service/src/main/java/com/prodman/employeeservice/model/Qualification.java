@@ -1,22 +1,16 @@
 package com.prodman.employeeservice.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Id;
-import jakarta.persistence.Entity;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import jakarta.persistence.*;
+import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Справочник квалификаций (в рамках тенанта).
+ * Пример: позиция "Оператор", а квалификации — "Оператор станка 1", "Оператор станка 2".
+ */
 @Entity
 @Builder
 @NoArgsConstructor
@@ -24,8 +18,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @ToString(onlyExplicitlyIncluded = true)
-@Table(name = "departments")
-public class Department {
+@Table(name = "qualifications")
+public class Qualification {
 
     @Id
     @UuidGenerator(style = UuidGenerator.Style.TIME)
@@ -36,6 +30,7 @@ public class Department {
     @Column(name = "tenant_id", nullable = false, updatable = false)
     private UUID tenantId;
 
+    /** Уникален в рамках тенанта. */
     @Column(name = "code", nullable = false)
     @ToString.Include
     private String code;

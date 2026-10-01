@@ -1,27 +1,30 @@
 package com.prodman.employeeservice.repository;
 
 import com.prodman.employeeservice.model.Employee;
-import com.prodman.employeeservice.model.EmployeeStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface EmployeeRepository extends JpaRepository<Employee, String> {
+public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 
-    Optional<Employee> findByEmail(String email);
+    Page<Employee> findAllByTenantId(UUID tenantId, Pageable pageable);
 
-    Optional<Employee> findByUserId(String userId);
+    Page<Employee> findAllByTenantIdAndDepartmentId(UUID tenantId, UUID departmentId, Pageable pageable);
 
-    List<Employee> findByStatus(EmployeeStatus status);
+    Optional<Employee> findByIdAndTenantId(UUID id, UUID tenantId);
 
-    List<Employee> findByDepartment_Id(String departmentId);
+    Optional<Employee> findByTenantIdAndPhone(UUID tenantId, String phone);
 
-    List<Employee> findByPosition_Id(String positionId);
+    boolean existsByTenantIdAndCode(UUID tenantId, String code);
 
-    boolean existsByEmail(String email);
+    boolean existsByTenantIdAndCodeAndIdNot(UUID tenantId, String code, UUID id);
 
-    boolean existsByUserId(String userId);
+    boolean existsByTenantIdAndPhone(UUID tenantId, String phone);
+
+    boolean existsByTenantIdAndPhoneAndIdNot(UUID tenantId, String phone, UUID id);
 }
