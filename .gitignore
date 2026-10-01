@@ -1,16 +1,13 @@
-cd D:\prodman
-
-# Создаем новый .gitignore
-@"
-# Compiled files
+# === Compiled ===
 *.class
 *.jar
 *.war
 *.ear
 target/
 out/
+BOOT-INF/
 
-# Maven
+# === Maven ===
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -21,7 +18,7 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# IDE files
+# === IDE ===
 .idea/
 *.iml
 *.iws
@@ -36,62 +33,39 @@ buildNumber.properties
 *.swp
 *.swo
 *~
-.DS_Store
 
-# Logs
+# === OS ===
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === Logs ===
 logs/
 *.log
 
-# Database
+# === Database ===
 *.db
 *.sqlite
 *.sqlite3
 
-# Environment files
+# === Env ===
 .env
 .env.*
 !.env.example
 
-# Docker
+# === Docker ===
 docker-compose.override.yml
 
-# All target directories (anywhere in project)
+# === Node ===
+node_modules/
+
+# === Target dirs anywhere ===
 **/target/
 **/target
 **/out/
 
-# Node modules
-node_modules/
-
-# OS files
-Thumbs.db
-Desktop.ini
-
-# Project specific
-all_configs.txt
-text.txt
-commands.txt
-*.backup
-*.old
-"@ | Out-File -FilePath .gitignore -Encoding UTF8
-
-# Проверяем содержимое .gitignore
-Get-Content .gitignoretarget/
-*.class
-.idea/
-structure.txt
-target/
-*.class
-*.jar
-.idea/
-*.iml
-structure.txt
-target/
-*.class
-*.jar
-.idea/
-*.iml
-structure.txt
+# === Helm ===
+prodman-helm/project_structure.txt
 
 # === Personal notes (не коммитим) ===
 react_migration.txt
@@ -100,25 +74,17 @@ structure.txt
 structure_v2.txt
 typescript.txt
 text.txt
+note_1.txt
+all_configs.txt
+commands.txt
+*.backup
+*.old
 
-# === IDE ===
-.idea/
-*.iml
-
-# === Сборка ===
-target/
-BOOT-INF/
-temp_check/
-node_modules/
-
-# === Helm ===
-prodman-helm/project_structure.txt
-
-
-# --- Local / temp files ---
+# === Local / temp ===
 prodman_tree.txt
 employee-service/pos*.json
+temp_check/
 
-# --- Maven archetype leftovers ---
+# === Maven archetype leftovers ===
 **/src/main/resources/archetype-resources/
 **/src/main/resources/META-INF/maven/archetype.xml

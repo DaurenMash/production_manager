@@ -1,0 +1,99 @@
+// employee-service
+// Схема БД сервиса сотрудников, отделов и должностей.
+// Мультитенантность: каждая сущность принадлежит тенанту (tenant_id).
+// См. ADR-0002.
+
+Project prodman_employee_service {
+  database_type: 'PostgreSQL'
+  Note: 'Сотрудники, отделы, должности. Database-per-service. Shared schema + tenant_id.'
+}
+
+// -----------------------------
+// Tenants (локальная проекция)
+// -----------------------------
+// Полноценный Tenant живёт в user-service. Здесь — только идентификатор
+// для ссылочной целостности на уровне приложения (без FK).
+
+Table tenants_ref {
+  id uuid [pk, note: 'Совпадает с Tenant.id в user-service']
+
+  Note: 'Проекция тенанта. Используется как цель ссылок tenant_id в других таблицах employee-service.'
+}
+
+// -----------------------------
+// Departments
+// -----------------------------
+Table departments {
+  id uuid [pk]
+  tenant_id uuid [not null, ref: > tenants_ref.id]
+  code varchar(64) [not null, note: 'Уникален в рамках тенанта']
+  name varchar(255) [not null]
+  description text
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, code) [unique, name: 'ux_departments_tenant_code']
+    (tenant_id, is_active) [name: 'ix_departments_tenant_active']
+  }
+}
+
+// -----------------------------
+// Positions
+// -----------------------------
+Table positions {
+  id uuid [pk]
+  tenant_id uuid [not null, ref: > tenants_ref.id]
+  code varchar(64) [not null, note: 'Уникален в рамках тенанта']
+  name varchar(255) [not null]
+  description text
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, code) [unique, name: 'ux_positions_tenant_code']
+    (tenant_id, is_active) [name: 'ix_positions_tenant_active']
+  }
+}
+
+// -----------------------------
+// Employees
+// -----------------------------
+Table employees {
+  id uuid [pk]
+  tenant_id uuid [not null, ref: > tenants_ref.id]
+  code varchar(64) [not null, note: 'Табельный номер. Уникален в рамках тенанта.']
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  middle_name varchar(100)
+  email varchar(255)
+  phone varchar(32)
+  hired_at date
+  fired_at date
+  status varchar(32) [not null, note: 'ACTIVE | ON_LEAVE | FIRED']
+  department_id uuid [ref: > departments.id, note: 'Отдел сотрудника, может быть null']
+  position_id uuid [ref: > positions.id, note: 'Текущая должность, может быть null']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, code) [unique, name: 'ux_employees_tenant_code']
+    (tenant_id, status) [name: 'ix_employees_tenant_status']
+    (tenant_id, department_id) [name: 'ix_employees_tenant_department']
+    (tenant_id, position_id) [name: 'ix_employees_tenant_position']
+  }
+}
+
+// -----------------------------
+// Примечания
+// -----------------------------
+// - Все uuid — тип uuid (PostgreSQL).
+// - timestamptz — timestamp with time zone.
+// - Уникальные бизнес-ключи всегда составные: (tenant_id, code).
+// - Индексы на "горячих" полях — с tenant_id первым.
+// - Связь с тенантом — логическая (FK на userservice.tenants не ставим,
+//   это разные БД; целостность обеспечивается приложением).
+// - qualifications (связь сотрудник ↔ должность с уровнем) добавим,
+//   когда перейдём к расстановке по квалификации.
