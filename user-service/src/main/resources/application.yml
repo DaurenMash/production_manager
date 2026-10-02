@@ -28,7 +28,7 @@ spring:
           min-idle: 2
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
@@ -49,6 +49,8 @@ logging:
     org.springframework.security: WARN
     org.hibernate: WARN
     org.springframework.web: WARN
+    liquibase: INFO
+
 
 springdoc:
   api-docs:

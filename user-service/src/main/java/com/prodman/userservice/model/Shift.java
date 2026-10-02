@@ -1,10 +1,19 @@
 package com.prodman.userservice.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UuidGenerator;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Entity
@@ -15,25 +24,46 @@ import lombok.NoArgsConstructor;
 public class Shift {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
 
-    @Column(nullable = false)
-    private String name; // "Утро", "День", "Ночь"
+    @Column(name = "tenant_id", nullable = false, updatable = false)
+    private UUID tenantId;
+
+    @Column(name = "shift_config_id", nullable = false)
+    private UUID shiftConfigId;
+
+    @Column(name = "name", nullable = false)
+    private String name;
 
     @Column(name = "start_time", nullable = false)
-    private String startTime; // "08:00"
+    private String startTime;
 
     @Column(name = "end_time", nullable = false)
-    private String endTime; // "20:00"
+    private String endTime;
 
-    @Column(nullable = false)
-    private Integer displayOrder; // 1, 2, 3
+    @Column(name = "display_order", nullable = false)
+    private Integer displayOrder;
 
-    @Column(nullable = false)
-    private String color; // Цвет для отображения в календаре
+    @Column(name = "color", nullable = false)
+    private String color;
 
-    @ManyToOne
-    @JoinColumn(name = "shift_config_id")
-    private ShiftConfig shiftConfig;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

@@ -1,8 +1,9 @@
 package com.prodman.userservice.model;
 
 public enum Role {
-    ADMIN,      // Полный доступ
-    OPERATOR,   // Управление станками, просмотр отчётов
-    ANALYST,    // Только аналитика и отчёты
-    VISITOR     // Демо-доступ, только ознакомительные страницы
+    PLATFORM_ADMIN, // Админ платформы (tenant_id = NULL)
+    ADMIN,          // Полный доступ внутри тенанта
+    OPERATOR,       // Управление станками, просмотр отчётов
+    ANALYST,        // Аналитика и отчёты
+    VISITOR         // Демо-доступ
 }

@@ -7,11 +7,13 @@ import com.prodman.userservice.model.Shift;
 import com.prodman.userservice.model.ShiftConfig;
 import com.prodman.userservice.repository.ShiftConfigRepository;
 import com.prodman.userservice.repository.ShiftRepository;
+import com.prodman.userservice.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,92 +25,113 @@ public class ShiftConfigService {
 
     @Transactional
     public ShiftConfigResponse createShiftConfig(CreateShiftConfigRequest request) {
-        // Если создается активная конфигурация, деактивируем старую
-        if (request.getShiftCount() == 2 || request.getShiftCount() == 3) {
-            shiftConfigRepository.findByIsActiveTrue()
-                .ifPresent(old -> {
-                    old.setIsActive(false);
-                    shiftConfigRepository.save(old);
-                });
+        UUID tenantId = TenantContext.require();
+
+        // Если создаём новую активную конфигурацию — деактивируем прежнюю активную у этого тенанта.
+        if (Boolean.TRUE.equals(request.getIsActive())) {
+            shiftConfigRepository.findFirstByTenantIdAndIsActive(tenantId, true)
+                    .ifPresent(old -> {
+                        old.setIsActive(false);
+                        shiftConfigRepository.save(old);
+                    });
         }
 
         ShiftConfig config = ShiftConfig.builder()
-            .name(request.getName())
-            .shiftCount(request.getShiftCount())
-            .isActive(true)
-            .build();
+                .tenantId(tenantId)
+                .name(request.getName())
+                .shiftCount(request.getShiftCount())
+                .isActive(request.getIsActive() == null ? Boolean.TRUE : request.getIsActive())
+                .build();
 
+        config = shiftConfigRepository.save(config);
+
+        final UUID configId = config.getId();
         List<Shift> shifts = request.getShifts().stream()
-            .map(dto -> Shift.builder()
-                .name(dto.getName())
-                .startTime(dto.getStartTime())
-                .endTime(dto.getEndTime())
-                .displayOrder(dto.getDisplayOrder())
-                .color(dto.getColor())
-                .shiftConfig(config)
-                .build())
-            .collect(Collectors.toList());
+                .map(dto -> Shift.builder()
+                        .tenantId(tenantId)
+                        .shiftConfigId(configId)
+                        .name(dto.getName())
+                        .startTime(dto.getStartTime())
+                        .endTime(dto.getEndTime())
+                        .displayOrder(dto.getDisplayOrder())
+                        .color(dto.getColor())
+                        .build())
+                .collect(Collectors.toList());
 
+        shiftRepository.saveAll(shifts);
         config.setShifts(shifts);
-        ShiftConfig saved = shiftConfigRepository.save(config);
-        return toResponse(saved);
-    }
 
-    public ShiftConfigResponse getActiveConfig() {
-        ShiftConfig config = shiftConfigRepository.findByIsActiveTrue()
-            .orElseThrow(() -> new CustomException.NotFound("No active shift configuration found"));
         return toResponse(config);
     }
 
+    @Transactional(readOnly = true)
+    public ShiftConfigResponse getActiveConfig() {
+        UUID tenantId = TenantContext.require();
+        ShiftConfig config = shiftConfigRepository.findFirstByTenantIdAndIsActive(tenantId, true)
+                .orElseThrow(() -> new CustomException.NotFound("No active shift configuration found"));
+        return toResponse(config);
+    }
+
+    @Transactional(readOnly = true)
     public List<ShiftConfigResponse> getAllConfigs() {
-        return shiftConfigRepository.findAllByOrderByCreatedAtDesc().stream()
-            .map(this::toResponse)
-            .collect(Collectors.toList());
+        UUID tenantId = TenantContext.require();
+        return shiftConfigRepository.findAllByTenantId(tenantId).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
-    public List<Shift> getShiftsForConfig(String configId) {
-        return shiftRepository.findByShiftConfigIdOrderByDisplayOrder(configId);
+    @Transactional(readOnly = true)
+    public List<Shift> getShiftsForConfig(UUID configId) {
+        UUID tenantId = TenantContext.require();
+        // Убедимся, что конфиг наш
+        shiftConfigRepository.findByIdAndTenantId(configId, tenantId)
+                .orElseThrow(() -> new CustomException.NotFound("Shift config not found: " + configId));
+        return shiftRepository.findAllByTenantIdAndShiftConfigId(tenantId, configId);
     }
 
-    public List<String> getShiftNamesForConfig(String configId) {
+    @Transactional(readOnly = true)
+    public List<String> getShiftNamesForConfig(UUID configId) {
         return getShiftsForConfig(configId).stream()
-            .map(Shift::getName)
-            .collect(Collectors.toList());
+                .map(Shift::getName)
+                .collect(Collectors.toList());
     }
 
     @Transactional
-    public ShiftConfigResponse setActiveConfig(String configId) {
-        // Деактивируем все
-        shiftConfigRepository.findAll().forEach(c -> {
-            c.setIsActive(false);
-            shiftConfigRepository.save(c);
-        });
+    public ShiftConfigResponse setActiveConfig(UUID configId) {
+        UUID tenantId = TenantContext.require();
 
-        ShiftConfig config = shiftConfigRepository.findById(configId)
-            .orElseThrow(() -> new CustomException.NotFound("Config not found"));
+        List<ShiftConfig> all = shiftConfigRepository.findAllByTenantId(tenantId);
+        all.forEach(c -> c.setIsActive(false));
+        shiftConfigRepository.saveAll(all);
+
+        ShiftConfig config = shiftConfigRepository.findByIdAndTenantId(configId, tenantId)
+                .orElseThrow(() -> new CustomException.NotFound("Config not found"));
         config.setIsActive(true);
         shiftConfigRepository.save(config);
         return toResponse(config);
     }
 
     private ShiftConfigResponse toResponse(ShiftConfig config) {
+        List<Shift> shifts = shiftRepository
+                .findAllByTenantIdAndShiftConfigId(config.getTenantId(), config.getId());
+
         return ShiftConfigResponse.builder()
-            .id(config.getId())
-            .name(config.getName())
-            .shiftCount(config.getShiftCount())
-            .isActive(config.getIsActive())
-            .shifts(config.getShifts().stream()
-                .map(s -> ShiftConfigResponse.ShiftDto.builder()
-                    .id(s.getId())
-                    .name(s.getName())
-                    .startTime(s.getStartTime())
-                    .endTime(s.getEndTime())
-                    .displayOrder(s.getDisplayOrder())
-                    .color(s.getColor())
-                    .build())
-                .collect(Collectors.toList()))
-            .createdAt(config.getCreatedAt())
-            .updatedAt(config.getUpdatedAt())
-            .build();
+                .id(config.getId())
+                .name(config.getName())
+                .shiftCount(config.getShiftCount())
+                .isActive(config.getIsActive())
+                .shifts(shifts.stream()
+                        .map(s -> ShiftConfigResponse.ShiftDto.builder()
+                                .id(s.getId())
+                                .name(s.getName())
+                                .startTime(s.getStartTime())
+                                .endTime(s.getEndTime())
+                                .displayOrder(s.getDisplayOrder())
+                                .color(s.getColor())
+                                .build())
+                        .collect(Collectors.toList()))
+                .createdAt(config.getCreatedAt())
+                .updatedAt(config.getUpdatedAt())
+                .build();
     }
 }

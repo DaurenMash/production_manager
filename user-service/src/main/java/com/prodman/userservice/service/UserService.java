@@ -7,12 +7,15 @@ import com.prodman.userservice.mapper.UserMapper;
 import com.prodman.userservice.model.Role;
 import com.prodman.userservice.model.User;
 import com.prodman.userservice.repository.UserRepository;
+import com.prodman.userservice.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -22,61 +25,51 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
 
-    public UserResponse register(RegisterRequest request) {
-        System.out.println("DEBUG: Register request - username=" + request.getUsername() +
-                ", email=" + request.getEmail() +
-                ", role=" + request.getRole());
+    /**
+     * Регистрация пользователя внутри текущего тенанта.
+     * Вызывается администратором тенанта.
+     */
+    @Transactional
+    public UserResponse register(RegisterRequest req) {
+        UUID tenantId = TenantContext.require();
 
-        if (userRepository.existsByUsername(request.getUsername())) {
-            System.out.println("DEBUG: Username already exists: " + request.getUsername());
+        if (userRepository.existsByTenantIdAndUsername(tenantId, req.getUsername())) {
             throw new CustomException.Conflict("Username already exists");
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            System.out.println("DEBUG: Email already exists: " + request.getEmail());
+        if (userRepository.existsByTenantIdAndEmail(tenantId, req.getEmail())) {
             throw new CustomException.Conflict("Email already exists");
         }
 
         User user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole() != null ? request.getRole() : Role.VISITOR)
+                .tenantId(tenantId)
+                .username(req.getUsername())
+                .email(req.getEmail())
+                .password(passwordEncoder.encode(req.getPassword()))
+                .role(req.getRole() != null ? req.getRole() : Role.VISITOR)
                 .enabled(true)
                 .build();
-
-        User savedUser = userRepository.save(user);
-        System.out.println("DEBUG: User saved successfully - id=" + savedUser.getId());
-
-        return userMapper.toResponse(savedUser);
+        return userMapper.toResponse(userRepository.save(user));
     }
 
-    public UserResponse getUserById(String id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new CustomException.NotFound("User not found with id: " + id));
+    @Transactional(readOnly = true)
+    public Page<UserResponse> list(Pageable pageable) {
+        UUID tenantId = TenantContext.require();
+        return userRepository.findAllByTenantId(tenantId, pageable).map(userMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getById(UUID id) {
+        UUID tenantId = TenantContext.require();
+        User user = userRepository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new CustomException.NotFound("User not found: " + id));
         return userMapper.toResponse(user);
     }
 
-    public UserResponse getUserByUsername(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new CustomException.NotFound("User not found with username: " + username));
-        return userMapper.toResponse(user);
-    }
-
-    public List<UserResponse> getAllUsers() {
-        return userRepository.findAll().stream()
-                .map(userMapper::toResponse)
-                .collect(Collectors.toList());
-    }
-
-    public User findByUsername(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new CustomException.NotFound("User not found: " + username));
-    }
-
-    public void deleteUser(String id) {
-        if (!userRepository.existsById(id)) {
-            throw new CustomException.NotFound("User not found with id: " + id);
-        }
-        userRepository.deleteById(id);
+    @Transactional
+    public void delete(UUID id) {
+        UUID tenantId = TenantContext.require();
+        User user = userRepository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new CustomException.NotFound("User not found: " + id));
+        userRepository.delete(user);
     }
 }

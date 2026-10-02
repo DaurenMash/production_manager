@@ -2,17 +2,21 @@ package com.prodman.userservice.mapper;
 
 import com.prodman.userservice.dto.response.UserResponse;
 import com.prodman.userservice.model.User;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
+import org.springframework.stereotype.Component;
 
-@Mapper(componentModel = "spring")
-public interface UserMapper {
+@Component
+public class UserMapper {
 
-    UserResponse toResponse(User user);
-    
-    // Если нужен маппинг с явным указанием роли VISITOR
-    @Mapping(target = "role", source = "role")
-    UserResponse toResponseWithRole(User user);
+    public UserResponse toResponse(User user) {
+        if (user == null) return null;
+        return UserResponse.builder()
+                .id(user.getId())
+                .tenantId(user.getTenantId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .enabled(user.isEnabled())
+                .createdAt(user.getCreatedAt())
+                .build();
+    }
 }
-
-//напиши unit тесты

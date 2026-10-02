@@ -74,7 +74,8 @@ structure.txt
 structure_v2.txt
 typescript.txt
 text.txt
-note_1.txt
+note_*.txt
+data_*.txt
 all_configs.txt
 commands.txt
 *.backup

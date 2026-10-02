@@ -11,6 +11,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginRequest {
+
+    /**
+     * Slug тенанта. Обязателен для обычного пользователя.
+     * Для PLATFORM_ADMIN (суперадмин платформы) — не нужен (null).
+     */
+    private String slug;
+
     @NotBlank(message = "Username is required")
     private String username;
 

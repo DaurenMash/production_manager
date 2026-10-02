@@ -7,13 +7,14 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ShiftConfigResponse {
-    private String id;
+    private UUID id;
     private String name;
     private Integer shiftCount;
     private Boolean isActive;
@@ -26,7 +27,7 @@ public class ShiftConfigResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ShiftDto {
-        private String id;
+        private UUID id;
         private String name;
         private String startTime;
         private String endTime;
