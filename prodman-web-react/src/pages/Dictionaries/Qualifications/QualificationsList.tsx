@@ -13,26 +13,29 @@ import {
     Tag,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { departmentsApi } from '../../../api/departments.api';
-import type { Department, CreateDepartmentRequest } from '../../../api/departments.api';
+import { qualificationsApi } from '../../../api/qualifications.api';
+import type {
+    Qualification,
+    CreateQualificationRequest,
+} from '../../../api/qualifications.api';
 
 const { Title } = Typography;
 
-const DepartmentsList = () => {
-    const [departments, setDepartments] = useState<Department[]>([]);
+const QualificationsList = () => {
+    const [items, setItems] = useState<Qualification[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState<Department | null>(null);
+    const [editing, setEditing] = useState<Qualification | null>(null);
     const [saving, setSaving] = useState(false);
     const [form] = Form.useForm();
 
     const load = async () => {
         setLoading(true);
         try {
-            const data = await departmentsApi.getAll(0, 200);
-            setDepartments(data.content ?? []);
+            const data = await qualificationsApi.getAll(0, 200);
+            setItems(data.content ?? []);
         } catch {
-            message.error('Ошибка загрузки отделов');
+            message.error('Ошибка загрузки квалификаций');
         } finally {
             setLoading(false);
         }
@@ -49,13 +52,13 @@ const DepartmentsList = () => {
         setModalOpen(true);
     };
 
-    const handleEdit = (department: Department) => {
-        setEditing(department);
+    const handleEdit = (q: Qualification) => {
+        setEditing(q);
         form.setFieldsValue({
-            code: department.code,
-            name: department.name,
-            description: department.description,
-            isActive: department.isActive,
+            code: q.code,
+            name: q.name,
+            description: q.description,
+            isActive: q.isActive,
         });
         setModalOpen(true);
     };
@@ -65,7 +68,7 @@ const DepartmentsList = () => {
             const values = await form.validateFields();
             setSaving(true);
 
-            const payload: CreateDepartmentRequest = {
+            const payload: CreateQualificationRequest = {
                 code: values.code,
                 name: values.name,
                 description: values.description,
@@ -73,11 +76,11 @@ const DepartmentsList = () => {
             };
 
             if (editing) {
-                await departmentsApi.update(editing.id, payload);
-                message.success('Отдел обновлён');
+                await qualificationsApi.update(editing.id, payload);
+                message.success('Квалификация обновлена');
             } else {
-                await departmentsApi.create(payload);
-                message.success('Отдел создан');
+                await qualificationsApi.create(payload);
+                message.success('Квалификация создана');
             }
 
             setModalOpen(false);
@@ -93,8 +96,8 @@ const DepartmentsList = () => {
 
     const handleDelete = async (id: string) => {
         try {
-            await departmentsApi.delete(id);
-            message.success('Отдел удалён');
+            await qualificationsApi.delete(id);
+            message.success('Квалификация удалена');
             load();
         } catch (err: any) {
             message.error(err.response?.data?.message || 'Ошибка удаления');
@@ -106,7 +109,7 @@ const DepartmentsList = () => {
         { title: 'Название', dataIndex: 'name', key: 'name' },
         { title: 'Описание', dataIndex: 'description', key: 'description' },
         {
-            title: 'Активен',
+            title: 'Активна',
             dataIndex: 'isActive',
             key: 'isActive',
             width: 120,
@@ -116,12 +119,12 @@ const DepartmentsList = () => {
             title: 'Действия',
             key: 'actions',
             width: 120,
-            render: (_: unknown, record: Department) => (
+            render: (_: unknown, record: Qualification) => (
                 <Space>
                     <Button icon={<EditOutlined />} size="small" onClick={() => handleEdit(record)} />
                     <Popconfirm
-                        title="Удалить отдел?"
-                        description="Если на него ссылаются сотрудники, удаление упадёт"
+                        title="Удалить квалификацию?"
+                        description="Если она назначена сотрудникам, удаление упадёт"
                         onConfirm={() => handleDelete(record.id)}
                         okText="Да"
                         cancelText="Нет"
@@ -137,7 +140,7 @@ const DepartmentsList = () => {
         <div>
             <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
                 <Title level={3} style={{ color: 'white', margin: 0 }}>
-                    Отделы
+                    Квалификации
                 </Title>
                 <Button
                     type="primary"
@@ -149,10 +152,10 @@ const DepartmentsList = () => {
                 </Button>
             </Space>
 
-            <Table dataSource={departments} columns={columns} rowKey="id" loading={loading} />
+            <Table dataSource={items} columns={columns} rowKey="id" loading={loading} />
 
             <Modal
-                title={editing ? 'Редактирование отдела' : 'Новый отдел'}
+                title={editing ? 'Редактирование квалификации' : 'Новая квалификация'}
                 open={modalOpen}
                 onOk={handleSave}
                 onCancel={() => setModalOpen(false)}
@@ -167,7 +170,7 @@ const DepartmentsList = () => {
                         label="Код"
                         rules={[{ required: true, message: 'Введите код' }]}
                     >
-                        <Input placeholder="Например: SHOP-1" />
+                        <Input placeholder="Например: Q-OPER-1" />
                     </Form.Item>
 
                     <Form.Item
@@ -175,14 +178,14 @@ const DepartmentsList = () => {
                         label="Название"
                         rules={[{ required: true, message: 'Введите название' }]}
                     >
-                        <Input placeholder="Например: Печатный цех" />
+                        <Input placeholder="Например: Оператор станка 1" />
                     </Form.Item>
 
                     <Form.Item name="description" label="Описание">
                         <Input.TextArea rows={3} />
                     </Form.Item>
 
-                    <Form.Item name="isActive" label="Активен" valuePropName="checked">
+                    <Form.Item name="isActive" label="Активна" valuePropName="checked">
                         <Switch />
                     </Form.Item>
                 </Form>
@@ -191,4 +194,4 @@ const DepartmentsList = () => {
     );
 };
 
-export default DepartmentsList;
+export default QualificationsList;

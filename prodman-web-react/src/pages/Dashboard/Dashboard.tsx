@@ -8,7 +8,7 @@ const Dashboard = () => {
       <Row gutter={16}>
         <Col span={6}>
           <Card style={{ background: '#2d2d3f', border: 'none' }}>
-            <Statistic title="Сотрудники" value={42} valueStyle={{ color: 'white' }} />
+            <Statistic title="Сотрудники" value={53} valueStyle={{ color: 'white' }} />
           </Card>
         </Col>
         <Col span={6}>

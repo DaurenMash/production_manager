@@ -9,14 +9,10 @@ import {
     Input,
     Popconfirm,
     message,
-    ColorPicker,
+    Switch,
     Tag,
 } from 'antd';
-import {
-    PlusOutlined,
-    EditOutlined,
-    DeleteOutlined,
-} from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { positionsApi } from '../../../api/positions.api';
 import type { Position, CreatePositionRequest } from '../../../api/positions.api';
 
@@ -33,9 +29,9 @@ const PositionsList = () => {
     const load = async () => {
         setLoading(true);
         try {
-            const data = await positionsApi.getAll();
-            setPositions(Array.isArray(data) ? data : []);
-        } catch (err: any) {
+            const data = await positionsApi.getAll(0, 200);
+            setPositions(data.content ?? []);
+        } catch {
             message.error('Ошибка загрузки должностей');
         } finally {
             setLoading(false);
@@ -49,15 +45,17 @@ const PositionsList = () => {
     const handleCreate = () => {
         setEditing(null);
         form.resetFields();
-        form.setFieldsValue({ color: '#bbdefb' });
+        form.setFieldsValue({ isActive: true });
         setModalOpen(true);
     };
 
     const handleEdit = (position: Position) => {
         setEditing(position);
         form.setFieldsValue({
+            code: position.code,
             name: position.name,
-            color: position.color,
+            description: position.description,
+            isActive: position.isActive,
         });
         setModalOpen(true);
     };
@@ -67,15 +65,11 @@ const PositionsList = () => {
             const values = await form.validateFields();
             setSaving(true);
 
-            // ColorPicker возвращает объект Color, вытаскиваем hex
-            const colorValue =
-                typeof values.color === 'string'
-                    ? values.color
-                    : values.color?.toHexString?.() || '#bbdefb';
-
             const payload: CreatePositionRequest = {
+                code: values.code,
                 name: values.name,
-                color: colorValue,
+                description: values.description,
+                isActive: values.isActive,
             };
 
             if (editing) {
@@ -108,29 +102,23 @@ const PositionsList = () => {
     };
 
     const columns = [
-        {
-            title: 'Цвет',
-            dataIndex: 'color',
-            key: 'color',
-            width: 100,
-            render: (color: string) => (
-                <Tag color={color} style={{ width: 40, height: 20, borderRadius: 4 }}>
-                    &nbsp;
-                </Tag>
-            ),
-        },
+        { title: 'Код', dataIndex: 'code', key: 'code', width: 120 },
         { title: 'Название', dataIndex: 'name', key: 'name' },
+        { title: 'Описание', dataIndex: 'description', key: 'description' },
+        {
+            title: 'Активна',
+            dataIndex: 'isActive',
+            key: 'isActive',
+            width: 120,
+            render: (v: boolean) => (v ? <Tag color="green">Да</Tag> : <Tag>Нет</Tag>),
+        },
         {
             title: 'Действия',
             key: 'actions',
             width: 120,
-            render: (_: any, record: Position) => (
+            render: (_: unknown, record: Position) => (
                 <Space>
-                    <Button
-                        icon={<EditOutlined />}
-                        size="small"
-                        onClick={() => handleEdit(record)}
-                    />
+                    <Button icon={<EditOutlined />} size="small" onClick={() => handleEdit(record)} />
                     <Popconfirm
                         title="Удалить должность?"
                         description="Если на неё ссылаются сотрудники, удаление упадёт"
@@ -161,13 +149,7 @@ const PositionsList = () => {
                 </Button>
             </Space>
 
-            <Table
-                dataSource={positions}
-                columns={columns}
-                rowKey="id"
-                loading={loading}
-                pagination={{ pageSize: 10 }}
-            />
+            <Table dataSource={positions} columns={columns} rowKey="id" loading={loading} />
 
             <Modal
                 title={editing ? 'Редактирование должности' : 'Новая должность'}
@@ -181,6 +163,14 @@ const PositionsList = () => {
             >
                 <Form form={form} layout="vertical">
                     <Form.Item
+                        name="code"
+                        label="Код"
+                        rules={[{ required: true, message: 'Введите код' }]}
+                    >
+                        <Input placeholder="Например: POS-1" />
+                    </Form.Item>
+
+                    <Form.Item
                         name="name"
                         label="Название"
                         rules={[{ required: true, message: 'Введите название' }]}
@@ -188,34 +178,12 @@ const PositionsList = () => {
                         <Input placeholder="Например: Печатник" />
                     </Form.Item>
 
-                    <Form.Item
-                        name="color"
-                        label="Цвет"
-                        rules={[{ required: true, message: 'Выберите цвет' }]}
-                    >
-                        <ColorPicker
-                            showText
-                            format="hex"
-                            presets={[
-                                {
-                                    label: 'Светлые',
-                                    colors: [
-                                        '#ffffff',
-                                        '#e0e0e0',
-                                        '#bbdefb',
-                                        '#c8e6c9',
-                                        '#fff9c4',
-                                        '#ffcc80',
-                                        '#ffcdd2',
-                                        '#e1bee7',
-                                        '#b2dfdb',
-                                        '#d7ccc8',
-                                        '#d1c4e9',
-                                        '#b2ebf2',
-                                    ],
-                                },
-                            ]}
-                        />
+                    <Form.Item name="description" label="Описание">
+                        <Input.TextArea rows={3} />
+                    </Form.Item>
+
+                    <Form.Item name="isActive" label="Активна" valuePropName="checked">
+                        <Switch />
                     </Form.Item>
                 </Form>
             </Modal>

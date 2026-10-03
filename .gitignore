@@ -85,6 +85,7 @@ commands.txt
 prodman_tree.txt
 employee-service/pos*.json
 temp_check/
+docs/conventions-large-prompts.md
 
 # === Maven archetype leftovers ===
 **/src/main/resources/archetype-resources/

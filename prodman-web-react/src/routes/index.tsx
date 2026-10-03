@@ -10,6 +10,7 @@ import WorkstationsList from '../pages/Workstations/WorkstationsList';
 import UsersList from '../pages/Users/UsersList';
 import PositionsList from '../pages/Dictionaries/Positions/PositionsList';
 import DepartmentsList from '../pages/Dictionaries/Departments/DepartmentsList';
+import QualificationsList from '../pages/Dictionaries/Qualifications/QualificationsList';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 
 export const router = createBrowserRouter([
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
           // Справочники
           { path: 'dictionaries/positions', element: <PositionsList /> },
           { path: 'dictionaries/departments', element: <DepartmentsList /> },
+          { path: 'dictionaries/qualifications', element: <QualificationsList /> },
         ],
       },
     ],

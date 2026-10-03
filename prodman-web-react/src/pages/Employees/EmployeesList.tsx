@@ -1,27 +1,10 @@
 ﻿import { useEffect, useState } from 'react';
 import {
-  Typography,
-  Table,
-  Tag,
-  Spin,
-  Alert,
-  Button,
-  Space,
-  Input,
-  Modal,
-  Form,
-  Popconfirm,
-  message,
-  Select,
-  InputNumber,
+  Typography, Table, Tag, Spin, Alert, Button, Space, Input, Modal, Form,
+  Popconfirm, message, Select, InputNumber, DatePicker,
 } from 'antd';
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  SearchOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 import { employeesApi } from '../../api/employees.api';
 import type { Employee, CreateEmployeeRequest, EmployeeStatus } from '../../api/employees.api';
@@ -34,11 +17,14 @@ const { Title } = Typography;
 
 const STATUS_OPTIONS: { value: EmployeeStatus; label: string; color: string }[] = [
   { value: 'AVAILABLE', label: 'Доступен', color: 'green' },
-  { value: 'BUSY', label: 'Занят', color: 'blue' },
-  { value: 'VACATION', label: 'В отпуске', color: 'orange' },
-  { value: 'SICK_LEAVE', label: 'Больничный', color: 'red' },
-  { value: 'UNAVAILABLE', label: 'Недоступен', color: 'gray' },
+  { value: 'ACTIVE', label: 'Работает', color: 'blue' },
+  { value: 'ON_LEAVE', label: 'В отпуске', color: 'orange' },
+  { value: 'FIRED', label: 'Уволен', color: 'red' },
 ];
+
+/** Backend хранит телефон в E.164 (+71231231212). В UI показываем 10 цифр. */
+const phoneToInput = (e164: string | null | undefined): string =>
+    e164 && e164.startsWith('+7') ? e164.slice(2) : (e164 || '');
 
 const EmployeesList = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -48,19 +34,17 @@ const EmployeesList = () => {
   const [positions, setPositions] = useState<Position[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
 
-  const [searchEmail, setSearchEmail] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
 
-  // === Загрузка данных ===
   const loadEmployees = async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await employeesApi.getAll();
-      setEmployees(Array.isArray(data) ? data : []);
+      const data = await employeesApi.getAll(0, 200);
+      setEmployees(data.content ?? []);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Ошибка загрузки');
     } finally {
@@ -71,12 +55,12 @@ const EmployeesList = () => {
   const loadDictionaries = async () => {
     try {
       const [pos, dep] = await Promise.all([
-        positionsApi.getAll(),
-        departmentsApi.getAll(),
+        positionsApi.getAll(0, 200),
+        departmentsApi.getAll(0, 200),
       ]);
-      setPositions(pos);
-      setDepartments(dep);
-    } catch (err) {
+      setPositions(pos.content ?? []);
+      setDepartments(dep.content ?? []);
+    } catch {
       message.error('Ошибка загрузки справочников');
     }
   };
@@ -86,47 +70,25 @@ const EmployeesList = () => {
     loadDictionaries();
   }, []);
 
-  // === Поиск ===
-  const handleSearch = async () => {
-    if (!searchEmail.trim()) {
-      loadEmployees();
-      return;
-    }
-    setLoading(true);
-    setError('');
-    try {
-      const data = await employeesApi.getByEmail(searchEmail.trim());
-      setEmployees([data]);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Сотрудник не найден');
-      setEmployees([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetSearch = () => {
-    setSearchEmail('');
-    loadEmployees();
-  };
-
-  // === Модалка ===
   const handleCreate = () => {
     setEditingEmployee(null);
     form.resetFields();
-    form.setFieldsValue({ maxConsecutiveHours: 12 });
+    form.setFieldsValue({ maxConsecutiveHours: 12, status: 'AVAILABLE' });
     setModalOpen(true);
   };
 
   const handleEdit = (employee: Employee) => {
     setEditingEmployee(employee);
     form.setFieldsValue({
+      code: employee.code,
       firstName: employee.firstName,
       lastName: employee.lastName,
-      email: employee.email,
-      phoneNumber: employee.phoneNumber,
-      positionId: employee.position?.id,
-      departmentId: employee.department?.id,
+      middleName: employee.middleName ?? '',
+      phone: phoneToInput(employee.phone),
+      departmentId: employee.departmentId ?? undefined,
+      positionId: employee.positionId ?? undefined,
+      hiredAt: employee.hiredAt ? dayjs(employee.hiredAt) : undefined,
+      firedAt: employee.firedAt ? dayjs(employee.firedAt) : undefined,
       status: employee.status,
       maxConsecutiveHours: employee.maxConsecutiveHours,
     });
@@ -138,11 +100,24 @@ const EmployeesList = () => {
       const values = await form.validateFields();
       setSaving(true);
 
+      const payload: CreateEmployeeRequest = {
+        code: values.code,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        middleName: values.middleName || undefined,
+        phone: values.phone,
+        departmentId: values.departmentId || undefined,
+        positionId: values.positionId || undefined,
+        hiredAt: values.hiredAt ? values.hiredAt.format('YYYY-MM-DD') : undefined,
+        firedAt: values.firedAt ? values.firedAt.format('YYYY-MM-DD') : undefined,
+        maxConsecutiveHours: values.maxConsecutiveHours,
+      };
+
       if (editingEmployee) {
-        await employeesApi.update(editingEmployee.id, values);
+        await employeesApi.update(editingEmployee.id, payload);
         message.success('Сотрудник обновлён');
       } else {
-        await employeesApi.create(values as CreateEmployeeRequest);
+        await employeesApi.create(payload);
         message.success('Сотрудник создан');
       }
 
@@ -167,52 +142,43 @@ const EmployeesList = () => {
     }
   };
 
-  // === Колонки ===
   const columns = [
-    { title: 'Имя', dataIndex: 'firstName', key: 'firstName' },
+    { title: 'Табельный', dataIndex: 'code', key: 'code', width: 120 },
     { title: 'Фамилия', dataIndex: 'lastName', key: 'lastName' },
-    { title: 'Email', dataIndex: 'email', key: 'email' },
+    { title: 'Имя', dataIndex: 'firstName', key: 'firstName' },
+    {
+      title: 'Телефон',
+      dataIndex: 'phone',
+      key: 'phone',
+      render: (p: string) => phoneToInput(p),
+    },
     {
       title: 'Отдел',
-      dataIndex: 'department',
-      key: 'department',
-      render: (dep: Employee['department']) =>
-          dep ? (
-              <Tag color={dep.color}>{dep.name}</Tag>
-          ) : (
-              '—'
-          ),
+      dataIndex: 'departmentName',
+      key: 'departmentName',
+      render: (n: string | null) => (n ? <Tag color="blue">{n}</Tag> : '—'),
     },
     {
       title: 'Должность',
-      dataIndex: 'position',
-      key: 'position',
-      render: (pos: Employee['position']) =>
-          pos ? (
-              <Tag color={pos.color}>{pos.name}</Tag>
-          ) : (
-              '—'
-          ),
+      dataIndex: 'positionName',
+      key: 'positionName',
+      render: (n: string | null) => (n ? <Tag color="green">{n}</Tag> : '—'),
     },
     {
       title: 'Статус',
       dataIndex: 'status',
       key: 'status',
       render: (status: EmployeeStatus) => {
-        const opt = STATUS_OPTIONS.find(o => o.value === status);
+        const opt = STATUS_OPTIONS.find((o) => o.value === status);
         return <Tag color={opt?.color || 'default'}>{opt?.label || status}</Tag>;
       },
     },
     {
       title: 'Действия',
       key: 'actions',
-      render: (_: any, record: Employee) => (
+      render: (_: unknown, record: Employee) => (
           <Space>
-            <Button
-                icon={<EditOutlined />}
-                size="small"
-                onClick={() => handleEdit(record)}
-            />
+            <Button icon={<EditOutlined />} size="small" onClick={() => handleEdit(record)} />
             <Popconfirm
                 title="Удалить сотрудника?"
                 description="Это действие нельзя отменить"
@@ -238,19 +204,8 @@ const EmployeesList = () => {
         </Title>
 
         <Space style={{ marginBottom: 16 }} wrap>
-          <Input
-              placeholder="Поиск по email"
-              value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
-              onPressEnter={handleSearch}
-              style={{ width: 250 }}
-              prefix={<SearchOutlined />}
-          />
-          <Button type="primary" onClick={handleSearch}>
-            Найти
-          </Button>
-          <Button onClick={handleResetSearch} icon={<ReloadOutlined />}>
-            Сбросить
+          <Button onClick={loadEmployees} icon={<ReloadOutlined />}>
+            Обновить
           </Button>
           <Button
               type="primary"
@@ -262,16 +217,14 @@ const EmployeesList = () => {
           </Button>
         </Space>
 
-        {error && (
-            <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />
-        )}
+        {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
 
         <Table
             dataSource={employees}
             columns={columns}
             rowKey="id"
             loading={loading}
-            pagination={{ pageSize: 10 }}
+            pagination={{ pageSize: 20 }}
         />
 
         <Modal
@@ -286,11 +239,11 @@ const EmployeesList = () => {
         >
           <Form form={form} layout="vertical">
             <Form.Item
-                name="firstName"
-                label="Имя"
-                rules={[{ required: true, message: 'Введите имя' }]}
+                name="code"
+                label="Табельный номер"
+                rules={[{ required: true, message: 'Введите табельный номер' }]}
             >
-              <Input />
+              <Input placeholder="Например: EMP-001" />
             </Form.Item>
 
             <Form.Item
@@ -302,28 +255,34 @@ const EmployeesList = () => {
             </Form.Item>
 
             <Form.Item
-                name="email"
-                label="Email"
-                rules={[
-                  { required: true, message: 'Введите email' },
-                  { type: 'email', message: 'Некорректный email' },
-                ]}
+                name="firstName"
+                label="Имя"
+                rules={[{ required: true, message: 'Введите имя' }]}
             >
-              <Input disabled={!!editingEmployee} />
+              <Input />
             </Form.Item>
 
-            <Form.Item name="phoneNumber" label="Телефон">
+            <Form.Item name="middleName" label="Отчество">
               <Input />
+            </Form.Item>
+
+            <Form.Item
+                name="phone"
+                label="Телефон"
+                tooltip="10 цифр без +7, например 1231231212"
+                rules={[
+                  { required: true, message: 'Введите телефон' },
+                  { pattern: /^\d{10}$/, message: 'Ровно 10 цифр без +7' },
+                ]}
+            >
+              <Input placeholder="1231231212" maxLength={10} />
             </Form.Item>
 
             <Form.Item name="departmentId" label="Отдел">
               <Select
                   placeholder="Выберите отдел"
                   allowClear
-                  options={departments.map(d => ({
-                    value: d.id,
-                    label: d.name,
-                  }))}
+                  options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
               />
             </Form.Item>
 
@@ -331,24 +290,17 @@ const EmployeesList = () => {
               <Select
                   placeholder="Выберите должность"
                   allowClear
-                  options={positions.map(p => ({
-                    value: p.id,
-                    label: p.name,
-                  }))}
+                  options={positions.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
               />
             </Form.Item>
 
-            {editingEmployee && (
-                <Form.Item name="status" label="Статус">
-                  <Select
-                      placeholder="Выберите статус"
-                      options={STATUS_OPTIONS.map(s => ({
-                        value: s.value,
-                        label: s.label,
-                      }))}
-                  />
-                </Form.Item>
-            )}
+            <Form.Item name="hiredAt" label="Дата приёма">
+              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            </Form.Item>
+
+            <Form.Item name="firedAt" label="Дата увольнения">
+              <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+            </Form.Item>
 
             <Form.Item
                 name="maxConsecutiveHours"
