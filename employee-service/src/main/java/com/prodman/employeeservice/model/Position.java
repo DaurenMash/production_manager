@@ -1,8 +1,8 @@
 package com.prodman.employeeservice.model;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Id;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -36,6 +36,10 @@ public class Position {
     @Column(name = "tenant_id", nullable = false, updatable = false)
     private UUID tenantId;
 
+    /** Должность принадлежит отделу. */
+    @Column(name = "department_id", nullable = false)
+    private UUID departmentId;
+
     @Column(name = "code", nullable = false)
     @ToString.Include
     private String code;
@@ -62,9 +66,7 @@ public class Position {
         LocalDateTime now = LocalDateTime.now();
         createdAt = now;
         updatedAt = now;
-        if (isActive == null) {
-            isActive = true;
-        }
+        if (isActive == null) isActive = true;
     }
 
     @PreUpdate

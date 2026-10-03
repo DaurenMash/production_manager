@@ -1,8 +1,8 @@
 package com.prodman.employeeservice.model;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Id;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -47,6 +47,10 @@ public class Department {
     @Column(name = "description")
     private String description;
 
+    /** Админ отдела. Ссылка на user-service.users.id. Может быть NULL. */
+    @Column(name = "admin_user_id")
+    private UUID adminUserId;
+
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
@@ -62,9 +66,7 @@ public class Department {
         LocalDateTime now = LocalDateTime.now();
         createdAt = now;
         updatedAt = now;
-        if (isActive == null) {
-            isActive = true;
-        }
+        if (isActive == null) isActive = true;
     }
 
     @PreUpdate

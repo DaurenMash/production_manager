@@ -14,6 +14,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class QualificationResponse {
     private UUID id;
+    private UUID positionId;
+    private String positionName;
     private String code;
     private String name;
     private String description;

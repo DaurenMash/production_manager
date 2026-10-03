@@ -3,7 +3,9 @@ package com.prodman.employeeservice.service;
 import com.prodman.employeeservice.dto.request.CreatePositionRequest;
 import com.prodman.employeeservice.dto.request.UpdatePositionRequest;
 import com.prodman.employeeservice.dto.response.PositionResponse;
+import com.prodman.employeeservice.model.Department;
 import com.prodman.employeeservice.model.Position;
+import com.prodman.employeeservice.repository.DepartmentRepository;
 import com.prodman.employeeservice.repository.PositionRepository;
 import com.prodman.employeeservice.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class PositionService {
 
     private final PositionRepository repository;
+    private final DepartmentRepository departmentRepository;
 
     @Transactional(readOnly = true)
     public Page<PositionResponse> list(Pageable pageable) {
@@ -40,8 +43,11 @@ public class PositionService {
         if (repository.existsByTenantIdAndCode(tenantId, req.getCode())) {
             throw new IllegalArgumentException("Position code already exists: " + req.getCode());
         }
+        Department department = resolveDepartment(req.getDepartmentId(), tenantId);
+
         Position p = Position.builder()
                 .tenantId(tenantId)
+                .departmentId(department.getId())
                 .code(req.getCode())
                 .name(req.getName())
                 .description(req.getDescription())
@@ -58,12 +64,13 @@ public class PositionService {
         if (repository.existsByTenantIdAndCodeAndIdNot(tenantId, req.getCode(), id)) {
             throw new IllegalArgumentException("Position code already exists: " + req.getCode());
         }
+        Department department = resolveDepartment(req.getDepartmentId(), tenantId);
+
+        p.setDepartmentId(department.getId());
         p.setCode(req.getCode());
         p.setName(req.getName());
         p.setDescription(req.getDescription());
-        if (req.getIsActive() != null) {
-            p.setIsActive(req.getIsActive());
-        }
+        if (req.getIsActive() != null) p.setIsActive(req.getIsActive());
         return toResponse(repository.save(p));
     }
 
@@ -75,9 +82,21 @@ public class PositionService {
         repository.delete(p);
     }
 
+    private Department resolveDepartment(UUID departmentId, UUID tenantId) {
+        return departmentRepository.findByIdAndTenantId(departmentId, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Department not found in this tenant: " + departmentId));
+    }
+
     private PositionResponse toResponse(Position p) {
+        String depName = departmentRepository.findByIdAndTenantId(p.getDepartmentId(), p.getTenantId())
+                .map(Department::getName)
+                .orElse(null);
+
         return PositionResponse.builder()
                 .id(p.getId())
+                .departmentId(p.getDepartmentId())
+                .departmentName(depName)
                 .code(p.getCode())
                 .name(p.getName())
                 .description(p.getDescription())

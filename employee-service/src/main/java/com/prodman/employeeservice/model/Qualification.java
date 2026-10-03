@@ -1,7 +1,17 @@
 package com.prodman.employeeservice.model;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
@@ -9,7 +19,8 @@ import java.util.UUID;
 
 /**
  * Справочник квалификаций (в рамках тенанта).
- * Пример: позиция "Оператор", а квалификации — "Оператор станка 1", "Оператор станка 2".
+ * Квалификация привязана к должности.
+ * Пример: должность "Оператор", квалификации — "Оператор станка 1", "Оператор ламинатора".
  */
 @Entity
 @Builder
@@ -30,7 +41,10 @@ public class Qualification {
     @Column(name = "tenant_id", nullable = false, updatable = false)
     private UUID tenantId;
 
-    /** Уникален в рамках тенанта. */
+    /** Квалификация привязана к должности. */
+    @Column(name = "position_id", nullable = false)
+    private UUID positionId;
+
     @Column(name = "code", nullable = false)
     @ToString.Include
     private String code;
@@ -57,9 +71,7 @@ public class Qualification {
         LocalDateTime now = LocalDateTime.now();
         createdAt = now;
         updatedAt = now;
-        if (isActive == null) {
-            isActive = true;
-        }
+        if (isActive == null) isActive = true;
     }
 
     @PreUpdate

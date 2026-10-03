@@ -1,5 +1,6 @@
 package com.prodman.employeeservice.service;
 
+import com.prodman.employeeservice.dto.response.EmployeeQualificationResponse;
 import com.prodman.employeeservice.model.Employee;
 import com.prodman.employeeservice.model.EmployeeQualification;
 import com.prodman.employeeservice.model.Qualification;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,19 +26,21 @@ public class EmployeeQualificationService {
     private final QualificationRepository qualificationRepository;
 
     @Transactional(readOnly = true)
-    public List<EmployeeQualification> listForEmployee(UUID employeeId) {
+    public List<EmployeeQualificationResponse> listForEmployee(UUID employeeId) {
         UUID tenantId = TenantContext.require();
         employeeRepository.findByIdAndTenantId(employeeId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
-        return repository.findAllByEmployeeId(employeeId);
+        return repository.findAllByEmployeeId(employeeId).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Transactional
-    public EmployeeQualification assign(UUID employeeId,
-                                        UUID qualificationId,
-                                        Integer level,
-                                        UUID assignedBy,
-                                        String notes) {
+    public EmployeeQualificationResponse assign(UUID employeeId,
+                                                UUID qualificationId,
+                                                Integer level,
+                                                UUID assignedBy,
+                                                String notes) {
         UUID tenantId = TenantContext.require();
         Employee employee = employeeRepository.findByIdAndTenantId(employeeId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
@@ -55,7 +59,7 @@ public class EmployeeQualificationService {
                 .assignedBy(assignedBy)
                 .notes(notes)
                 .build();
-        return repository.save(eq);
+        return toResponse(repository.save(eq));
     }
 
     @Transactional
@@ -65,5 +69,21 @@ public class EmployeeQualificationService {
                 .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
         repository.findByEmployeeIdAndQualificationId(employeeId, qualificationId)
                 .ifPresent(repository::delete);
+    }
+
+    private EmployeeQualificationResponse toResponse(EmployeeQualification eq) {
+        return EmployeeQualificationResponse.builder()
+                .id(eq.getId())
+                .employeeId(eq.getEmployee().getId())
+                .qualificationId(eq.getQualification().getId())
+                .qualificationCode(eq.getQualification().getCode())
+                .qualificationName(eq.getQualification().getName())
+                .level(eq.getLevel())
+                .assignedAt(eq.getAssignedAt())
+                .assignedBy(eq.getAssignedBy())
+                .notes(eq.getNotes())
+                .createdAt(eq.getCreatedAt())
+                .updatedAt(eq.getUpdatedAt())
+                .build();
     }
 }

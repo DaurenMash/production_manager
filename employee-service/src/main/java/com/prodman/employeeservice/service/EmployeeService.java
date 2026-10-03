@@ -55,6 +55,7 @@ public class EmployeeService {
 
         Department department = resolveDepartment(req.getDepartmentId(), tenantId);
         Position position = resolvePosition(req.getPositionId(), tenantId);
+        validateDepartmentPositionConsistency(department, position);
 
         Employee e = Employee.builder()
                 .tenantId(tenantId)
@@ -88,6 +89,10 @@ public class EmployeeService {
             throw new IllegalArgumentException("Employee phone already exists: " + phoneE164);
         }
 
+        Department department = resolveDepartment(req.getDepartmentId(), tenantId);
+        Position position = resolvePosition(req.getPositionId(), tenantId);
+        validateDepartmentPositionConsistency(department, position);
+
         e.setCode(req.getCode());
         e.setFirstName(req.getFirstName());
         e.setLastName(req.getLastName());
@@ -95,8 +100,8 @@ public class EmployeeService {
         e.setPhone(phoneE164);
         e.setHiredAt(req.getHiredAt());
         e.setFiredAt(req.getFiredAt());
-        e.setDepartment(resolveDepartment(req.getDepartmentId(), tenantId));
-        e.setPosition(resolvePosition(req.getPositionId(), tenantId));
+        e.setDepartment(department);
+        e.setPosition(position);
         e.setUserId(req.getUserId());
         if (req.getMaxConsecutiveHours() != null) {
             e.setMaxConsecutiveHours(req.getMaxConsecutiveHours());
@@ -112,6 +117,10 @@ public class EmployeeService {
         employeeRepository.delete(e);
     }
 
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
     private Department resolveDepartment(UUID departmentId, UUID tenantId) {
         if (departmentId == null) return null;
         return departmentRepository.findByIdAndTenantId(departmentId, tenantId)
@@ -124,6 +133,18 @@ public class EmployeeService {
         return positionRepository.findByIdAndTenantId(positionId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Position not found in this tenant: " + positionId));
+    }
+
+    /**
+     * Если заданы и department, и position, то position.departmentId
+     * должен совпадать с department.id.
+     */
+    private void validateDepartmentPositionConsistency(Department department, Position position) {
+        if (department != null && position != null
+                && !position.getDepartmentId().equals(department.getId())) {
+            throw new IllegalArgumentException(
+                    "Position " + position.getId() + " does not belong to department " + department.getId());
+        }
     }
 
     private EmployeeResponse toResponse(Employee e) {

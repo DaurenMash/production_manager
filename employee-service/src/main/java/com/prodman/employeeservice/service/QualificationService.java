@@ -3,7 +3,9 @@ package com.prodman.employeeservice.service;
 import com.prodman.employeeservice.dto.request.CreateQualificationRequest;
 import com.prodman.employeeservice.dto.request.UpdateQualificationRequest;
 import com.prodman.employeeservice.dto.response.QualificationResponse;
+import com.prodman.employeeservice.model.Position;
 import com.prodman.employeeservice.model.Qualification;
+import com.prodman.employeeservice.repository.PositionRepository;
 import com.prodman.employeeservice.repository.QualificationRepository;
 import com.prodman.employeeservice.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class QualificationService {
 
     private final QualificationRepository repository;
+    private final PositionRepository positionRepository;
 
     @Transactional(readOnly = true)
     public Page<QualificationResponse> list(Pageable pageable) {
@@ -40,8 +43,11 @@ public class QualificationService {
         if (repository.existsByTenantIdAndCode(tenantId, req.getCode())) {
             throw new IllegalArgumentException("Qualification code already exists: " + req.getCode());
         }
+        Position position = resolvePosition(req.getPositionId(), tenantId);
+
         Qualification q = Qualification.builder()
                 .tenantId(tenantId)
+                .positionId(position.getId())
                 .code(req.getCode())
                 .name(req.getName())
                 .description(req.getDescription())
@@ -58,12 +64,13 @@ public class QualificationService {
         if (repository.existsByTenantIdAndCodeAndIdNot(tenantId, req.getCode(), id)) {
             throw new IllegalArgumentException("Qualification code already exists: " + req.getCode());
         }
+        Position position = resolvePosition(req.getPositionId(), tenantId);
+
+        q.setPositionId(position.getId());
         q.setCode(req.getCode());
         q.setName(req.getName());
         q.setDescription(req.getDescription());
-        if (req.getIsActive() != null) {
-            q.setIsActive(req.getIsActive());
-        }
+        if (req.getIsActive() != null) q.setIsActive(req.getIsActive());
         return toResponse(repository.save(q));
     }
 
@@ -75,9 +82,21 @@ public class QualificationService {
         repository.delete(q);
     }
 
+    private Position resolvePosition(UUID positionId, UUID tenantId) {
+        return positionRepository.findByIdAndTenantId(positionId, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Position not found in this tenant: " + positionId));
+    }
+
     private QualificationResponse toResponse(Qualification q) {
+        String posName = positionRepository.findByIdAndTenantId(q.getPositionId(), q.getTenantId())
+                .map(Position::getName)
+                .orElse(null);
+
         return QualificationResponse.builder()
                 .id(q.getId())
+                .positionId(q.getPositionId())
+                .positionName(posName)
                 .code(q.getCode())
                 .name(q.getName())
                 .description(q.getDescription())
