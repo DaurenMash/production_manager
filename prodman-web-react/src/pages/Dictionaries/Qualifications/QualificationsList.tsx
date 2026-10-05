@@ -11,6 +11,7 @@ import {
     message,
     Switch,
     Tag,
+    Select,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { qualificationsApi } from '../../../api/qualifications.api';
@@ -18,11 +19,14 @@ import type {
     Qualification,
     CreateQualificationRequest,
 } from '../../../api/qualifications.api';
+import { positionsApi } from '../../../api/positions.api';
+import type { Position } from '../../../api/positions.api';
 
 const { Title } = Typography;
 
 const QualificationsList = () => {
     const [items, setItems] = useState<Qualification[]>([]);
+    const [positions, setPositions] = useState<Position[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<Qualification | null>(null);
@@ -32,10 +36,14 @@ const QualificationsList = () => {
     const load = async () => {
         setLoading(true);
         try {
-            const data = await qualificationsApi.getAll(0, 200);
-            setItems(data.content ?? []);
+            const [q, p] = await Promise.all([
+                qualificationsApi.getAll(0, 200),
+                positionsApi.getAll(0, 200),
+            ]);
+            setItems(q.content ?? []);
+            setPositions(p.content ?? []);
         } catch {
-            message.error('Ошибка загрузки квалификаций');
+            message.error('Ошибка загрузки данных');
         } finally {
             setLoading(false);
         }
@@ -55,6 +63,7 @@ const QualificationsList = () => {
     const handleEdit = (q: Qualification) => {
         setEditing(q);
         form.setFieldsValue({
+            positionId: q.positionId,
             code: q.code,
             name: q.name,
             description: q.description,
@@ -69,6 +78,7 @@ const QualificationsList = () => {
             setSaving(true);
 
             const payload: CreateQualificationRequest = {
+                positionId: values.positionId,
                 code: values.code,
                 name: values.name,
                 description: values.description,
@@ -105,14 +115,20 @@ const QualificationsList = () => {
     };
 
     const columns = [
-        { title: 'Код', dataIndex: 'code', key: 'code', width: 120 },
+        { title: 'Код', dataIndex: 'code', key: 'code', width: 140 },
         { title: 'Название', dataIndex: 'name', key: 'name' },
+        {
+            title: 'Должность',
+            dataIndex: 'positionName',
+            key: 'positionName',
+            render: (n: string | null) => (n ? <Tag color="blue">{n}</Tag> : '—'),
+        },
         { title: 'Описание', dataIndex: 'description', key: 'description' },
         {
             title: 'Активна',
             dataIndex: 'isActive',
             key: 'isActive',
-            width: 120,
+            width: 100,
             render: (v: boolean) => (v ? <Tag color="green">Да</Tag> : <Tag>Нет</Tag>),
         },
         {
@@ -165,6 +181,20 @@ const QualificationsList = () => {
                 width={500}
             >
                 <Form form={form} layout="vertical">
+                    <Form.Item
+                        name="positionId"
+                        label="Должность"
+                        rules={[{ required: true, message: 'Выберите должность' }]}
+                    >
+                        <Select
+                            placeholder="Выберите должность"
+                            options={positions.map((p) => ({
+                                value: p.id,
+                                label: `${p.code} — ${p.name}${p.departmentName ? ` (${p.departmentName})` : ''}`,
+                            }))}
+                        />
+                    </Form.Item>
+
                     <Form.Item
                         name="code"
                         label="Код"

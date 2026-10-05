@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Typography, Table, Tag, Spin, Alert, Button, Space, Input, Modal, Form,
   Popconfirm, message, Select, InputNumber, DatePicker,
@@ -27,6 +28,7 @@ const phoneToInput = (e164: string | null | undefined): string =>
     e164 && e164.startsWith('+7') ? e164.slice(2) : (e164 || '');
 
 const EmployeesList = () => {
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,6 +40,13 @@ const EmployeesList = () => {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
+
+  /** Выбранный в форме отдел — для фильтрации списка должностей. */
+  const selectedDepartmentId = Form.useWatch('departmentId', form);
+
+  const filteredPositions = selectedDepartmentId
+      ? positions.filter((p) => p.departmentId === selectedDepartmentId)
+      : positions;
 
   const loadEmployees = async () => {
     setLoading(true);
@@ -113,6 +122,16 @@ const EmployeesList = () => {
         maxConsecutiveHours: values.maxConsecutiveHours,
       };
 
+      // Клиентская проверка согласованности отдел/должность.
+      if (payload.departmentId && payload.positionId) {
+        const pos = positions.find((p) => p.id === payload.positionId);
+        if (pos && pos.departmentId !== payload.departmentId) {
+          message.error('Выбранная должность не принадлежит выбранному отделу');
+          setSaving(false);
+          return;
+        }
+      }
+
       if (editingEmployee) {
         await employeesApi.update(editingEmployee.id, payload);
         message.success('Сотрудник обновлён');
@@ -144,7 +163,14 @@ const EmployeesList = () => {
 
   const columns = [
     { title: 'Табельный', dataIndex: 'code', key: 'code', width: 120 },
-    { title: 'Фамилия', dataIndex: 'lastName', key: 'lastName' },
+    {
+      title: 'Фамилия',
+      dataIndex: 'lastName',
+      key: 'lastName',
+      render: (_: unknown, record: Employee) => (
+          <a onClick={() => navigate(`/employees/${record.id}`)}>{record.lastName}</a>
+      ),
+    },
     { title: 'Имя', dataIndex: 'firstName', key: 'firstName' },
     {
       title: 'Телефон',
@@ -286,11 +312,22 @@ const EmployeesList = () => {
               />
             </Form.Item>
 
-            <Form.Item name="positionId" label="Должность">
+            <Form.Item
+                name="positionId"
+                label="Должность"
+                tooltip={
+                  selectedDepartmentId
+                      ? 'Показаны только должности выбранного отдела'
+                      : 'Сначала выберите отдел, чтобы отфильтровать список'
+                }
+            >
               <Select
                   placeholder="Выберите должность"
                   allowClear
-                  options={positions.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+                  options={filteredPositions.map((p) => ({
+                    value: p.id,
+                    label: `${p.code} — ${p.name}`,
+                  }))}
               />
             </Form.Item>
 

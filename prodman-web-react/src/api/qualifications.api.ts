@@ -3,6 +3,8 @@ import type { PageResponse } from './employees.api';
 
 export interface Qualification {
     id: string;
+    positionId: string;
+    positionName: string | null;
     code: string;
     name: string;
     description: string | null;
@@ -12,6 +14,7 @@ export interface Qualification {
 }
 
 export interface CreateQualificationRequest {
+    positionId: string;
     code: string;
     name: string;
     description?: string;
@@ -42,9 +45,11 @@ export interface AssignQualificationRequest {
 }
 
 export const qualificationsApi = {
-    getAll: (page = 0, size = 100): Promise<PageResponse<Qualification>> =>
+    getAll: (page = 0, size = 200, positionId?: string): Promise<PageResponse<Qualification>> =>
         apiClient
-            .get('/employee-service/api/qualifications', { params: { page, size } })
+            .get('/employee-service/api/qualifications', {
+                params: { page, size, ...(positionId ? { positionId } : {}) },
+            })
             .then((res) => res.data),
 
     getById: (id: string): Promise<Qualification> =>

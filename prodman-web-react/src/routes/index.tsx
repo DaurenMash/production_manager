@@ -3,6 +3,7 @@ import MainLayout from '../layouts/MainLayout/MainLayout';
 import Login from '../pages/Auth/Login';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import EmployeesList from '../pages/Employees/EmployeesList';
+import EmployeeDetail from '../pages/Employees/EmployeeDetail';
 import Equipment from '../pages/Equipment/Equipment';
 import TestsList from '../pages/Tests/TestsList';
 import WorkCalendar from '../pages/Calendar/WorkCalendar';
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: 'dashboard', element: <Dashboard /> },
           { path: 'employees', element: <EmployeesList /> },
+          { path: 'employees/:id', element: <EmployeeDetail /> },
           { path: 'equipment', element: <Equipment /> },
           { path: 'tests', element: <TestsList /> },
           { path: 'calendar', element: <WorkCalendar /> },

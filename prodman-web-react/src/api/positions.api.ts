@@ -3,6 +3,8 @@ import type { PageResponse } from './employees.api';
 
 export interface Position {
     id: string;
+    departmentId: string;
+    departmentName: string | null;
     code: string;
     name: string;
     description: string | null;
@@ -12,6 +14,7 @@ export interface Position {
 }
 
 export interface CreatePositionRequest {
+    departmentId: string;
     code: string;
     name: string;
     description?: string;
@@ -21,9 +24,11 @@ export interface CreatePositionRequest {
 export type UpdatePositionRequest = CreatePositionRequest;
 
 export const positionsApi = {
-    getAll: (page = 0, size = 100): Promise<PageResponse<Position>> =>
+    getAll: (page = 0, size = 200, departmentId?: string): Promise<PageResponse<Position>> =>
         apiClient
-            .get('/employee-service/api/positions', { params: { page, size } })
+            .get('/employee-service/api/positions', {
+                params: { page, size, ...(departmentId ? { departmentId } : {}) },
+            })
             .then((res) => res.data),
 
     getById: (id: string): Promise<Position> =>

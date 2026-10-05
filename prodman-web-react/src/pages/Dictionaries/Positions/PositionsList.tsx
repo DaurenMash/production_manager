@@ -11,15 +11,19 @@ import {
     message,
     Switch,
     Tag,
+    Select,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { positionsApi } from '../../../api/positions.api';
 import type { Position, CreatePositionRequest } from '../../../api/positions.api';
+import { departmentsApi } from '../../../api/departments.api';
+import type { Department } from '../../../api/departments.api';
 
 const { Title } = Typography;
 
 const PositionsList = () => {
     const [positions, setPositions] = useState<Position[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<Position | null>(null);
@@ -29,10 +33,14 @@ const PositionsList = () => {
     const load = async () => {
         setLoading(true);
         try {
-            const data = await positionsApi.getAll(0, 200);
-            setPositions(data.content ?? []);
+            const [pos, dep] = await Promise.all([
+                positionsApi.getAll(0, 200),
+                departmentsApi.getAll(0, 200),
+            ]);
+            setPositions(pos.content ?? []);
+            setDepartments(dep.content ?? []);
         } catch {
-            message.error('Ошибка загрузки должностей');
+            message.error('Ошибка загрузки данных');
         } finally {
             setLoading(false);
         }
@@ -52,6 +60,7 @@ const PositionsList = () => {
     const handleEdit = (position: Position) => {
         setEditing(position);
         form.setFieldsValue({
+            departmentId: position.departmentId,
             code: position.code,
             name: position.name,
             description: position.description,
@@ -66,6 +75,7 @@ const PositionsList = () => {
             setSaving(true);
 
             const payload: CreatePositionRequest = {
+                departmentId: values.departmentId,
                 code: values.code,
                 name: values.name,
                 description: values.description,
@@ -104,12 +114,18 @@ const PositionsList = () => {
     const columns = [
         { title: 'Код', dataIndex: 'code', key: 'code', width: 120 },
         { title: 'Название', dataIndex: 'name', key: 'name' },
+        {
+            title: 'Отдел',
+            dataIndex: 'departmentName',
+            key: 'departmentName',
+            render: (n: string | null) => (n ? <Tag color="blue">{n}</Tag> : '—'),
+        },
         { title: 'Описание', dataIndex: 'description', key: 'description' },
         {
             title: 'Активна',
             dataIndex: 'isActive',
             key: 'isActive',
-            width: 120,
+            width: 100,
             render: (v: boolean) => (v ? <Tag color="green">Да</Tag> : <Tag>Нет</Tag>),
         },
         {
@@ -163,6 +179,17 @@ const PositionsList = () => {
             >
                 <Form form={form} layout="vertical">
                     <Form.Item
+                        name="departmentId"
+                        label="Отдел"
+                        rules={[{ required: true, message: 'Выберите отдел' }]}
+                    >
+                        <Select
+                            placeholder="Выберите отдел"
+                            options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
                         name="code"
                         label="Код"
                         rules={[{ required: true, message: 'Введите код' }]}
@@ -175,7 +202,7 @@ const PositionsList = () => {
                         label="Название"
                         rules={[{ required: true, message: 'Введите название' }]}
                     >
-                        <Input placeholder="Например: Печатник" />
+                        <Input placeholder="Например: Оператор" />
                     </Form.Item>
 
                     <Form.Item name="description" label="Описание">
