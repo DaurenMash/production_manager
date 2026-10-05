@@ -1,0 +1,140 @@
+// employee-service
+// Схема БД сервиса сотрудников, отделов, должностей и квалификаций.
+// Мультитенантность: каждая сущность принадлежит тенанту (tenant_id).
+// См. ADR-0002.
+// Идентификаторы — UUID v7 (Hibernate @UuidGenerator(style = TIME)).
+//
+// Иерархия:
+//   Tenant → Department → Position → Qualification
+//   Employee принадлежит Department, имеет Position и набор Qualifications.
+//
+// Телефон сотрудника — логин в рамках тенанта.
+//   Ввод: 1231231212 (10 цифр, без +7).
+//   Хранение: E.164 (+71231231212).
+//   Отображение: +7 123 123 12 12.
+
+Project prodman_employee_service {
+  database_type: 'PostgreSQL'
+  Note: 'Сотрудники, отделы, должности, квалификации. Database-per-service. Shared schema + tenant_id.'
+}
+
+// -----------------------------
+// Tenants (локальная проекция)
+// -----------------------------
+Table tenants_ref {
+  id uuid [pk, note: 'Совпадает с Tenant.id в user-service']
+}
+
+// -----------------------------
+// Departments
+// -----------------------------
+Table departments {
+  id             uuid         [pk, note: 'UUID v7']
+  tenant_id      uuid         [not null, ref: > tenants_ref.id]
+  code           varchar(64)  [not null, note: 'Уникален в рамках тенанта']
+  name           varchar(255) [not null]
+  description    text
+  admin_user_id  uuid         [note: 'Ссылка на user-service.users.id. NULL = без админа.']
+  is_active      boolean      [not null, default: true]
+  created_at     timestamptz  [not null, default: `now()`]
+  updated_at     timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, code)      [unique, name: 'ux_departments_tenant_code']
+    (tenant_id, is_active) [name: 'ix_departments_tenant_active']
+  }
+}
+
+// -----------------------------
+// Positions
+// -----------------------------
+Table positions {
+  id             uuid         [pk, note: 'UUID v7']
+  tenant_id      uuid         [not null, ref: > tenants_ref.id]
+  department_id  uuid         [not null, ref: > departments.id, note: 'Должность принадлежит отделу']
+  code           varchar(64)  [not null, note: 'Уникален в рамках тенанта']
+  name           varchar(255) [not null]
+  description    text
+  is_active      boolean      [not null, default: true]
+  created_at     timestamptz  [not null, default: `now()`]
+  updated_at     timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, code)          [unique, name: 'ux_positions_tenant_code']
+    (tenant_id, department_id) [name: 'ix_positions_tenant_department']
+    (tenant_id, is_active)     [name: 'ix_positions_tenant_active']
+  }
+}
+
+// -----------------------------
+// Qualifications
+// -----------------------------
+Table qualifications {
+  id           uuid         [pk, note: 'UUID v7']
+  tenant_id    uuid         [not null, ref: > tenants_ref.id]
+  position_id  uuid         [not null, ref: > positions.id, note: 'Квалификация привязана к должности']
+  code         varchar(64)  [not null, note: 'Уникален в рамках тенанта']
+  name         varchar(255) [not null]
+  description  text
+  is_active    boolean      [not null, default: true]
+  created_at   timestamptz  [not null, default: `now()`]
+  updated_at   timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, code)        [unique, name: 'ux_qualifications_tenant_code']
+    (tenant_id, position_id) [name: 'ix_qualifications_tenant_position']
+    (tenant_id, is_active)   [name: 'ix_qualifications_tenant_active']
+  }
+}
+
+// -----------------------------
+// Employees
+// -----------------------------
+Table employees {
+  id                     uuid         [pk, note: 'UUID v7']
+  tenant_id              uuid         [not null, ref: > tenants_ref.id]
+  code                   varchar(64)  [not null, note: 'Табельный номер. Уникален в рамках тенанта.']
+  first_name             varchar(100) [not null]
+  last_name              varchar(100) [not null]
+  middle_name            varchar(100)
+  phone                  varchar(16)  [not null, note: 'E.164. Логин в рамках тенанта.']
+  hired_at               date
+  fired_at               date
+  status                 varchar(32)  [not null, note: 'AVAILABLE | ACTIVE | ON_LEAVE | FIRED']
+  department_id          uuid         [ref: > departments.id]
+  position_id            uuid         [ref: > positions.id, note: 'Должен принадлежать тому же отделу, что и сотрудник']
+  user_id                uuid         [note: 'Ссылка на user-service.users.id']
+  max_consecutive_hours  integer      [not null, default: 12]
+  created_at             timestamptz  [not null, default: `now()`]
+  updated_at             timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, code)           [unique, name: 'ux_employees_tenant_code']
+    (tenant_id, phone)          [unique, name: 'ux_employees_tenant_phone']
+    (tenant_id, user_id)        [unique, name: 'ux_employees_tenant_user']
+    (tenant_id, status)         [name: 'ix_employees_tenant_status']
+    (tenant_id, department_id)  [name: 'ix_employees_tenant_department']
+    (tenant_id, position_id)    [name: 'ix_employees_tenant_position']
+  }
+}
+
+// -----------------------------
+// Employee ↔ Qualification
+// -----------------------------
+Table employee_qualifications {
+  id                uuid         [pk, note: 'UUID v7']
+  employee_id       uuid         [not null, ref: > employees.id]
+  qualification_id  uuid         [not null, ref: > qualifications.id]
+  level             integer      [not null, default: 1, note: '>= 1. 1 — начинающий.']
+  assigned_at       date         [not null, default: `CURRENT_DATE`]
+  assigned_by       uuid         [note: 'user_id того, кто присвоил.']
+  notes             text
+  created_at        timestamptz  [not null, default: `now()`]
+  updated_at        timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (employee_id, qualification_id) [unique, name: 'ux_eq_employee_qualification']
+    (qualification_id)              [name: 'ix_eq_qualification']
+    (assigned_at)                   [name: 'ix_eq_assigned_at']
+  }
+}

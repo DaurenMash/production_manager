@@ -1,14 +1,25 @@
 package com.prodman.userservice.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Entity
@@ -19,32 +30,39 @@ import java.util.List;
 public class ShiftConfig {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
 
-    @Column(nullable = false)
-    private String name; // "Смены 2024" или "Основные смены"
+    @Column(name = "tenant_id", nullable = false, updatable = false)
+    private UUID tenantId;
 
-    @Column(nullable = false)
-    private Integer shiftCount; // 2 или 3
+    @Column(name = "name", nullable = false)
+    private String name;
 
-    @Column(nullable = false)
+    @Column(name = "shift_count", nullable = false)
+    private Integer shiftCount;
+
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     @JoinColumn(name = "shift_config_id")
     private List<Shift> shifts = new ArrayList<>();
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+        if (isActive == null) isActive = true;
     }
 
     @PreUpdate

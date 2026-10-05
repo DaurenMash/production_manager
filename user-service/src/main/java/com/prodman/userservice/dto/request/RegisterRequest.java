@@ -1,3 +1,6 @@
+// DTO RegisterRequest больше не используется.
+// Регистрация нового тенанта — RegisterTenantRequest.
+// Добавление пользователя в существующий тенант — через AdminUserController (позже).
 package com.prodman.userservice.dto.request;
 
 import com.prodman.userservice.model.Role;
@@ -9,23 +12,29 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Регистрация пользователя внутри существующего тенанта.
+ * Используется администратором тенанта (не публичный эндпоинт).
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class RegisterRequest {
-    @NotBlank(message = "Username is required")
-    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+
+    @NotBlank
+    @Size(min = 3, max = 64)
     private String username;
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @NotBlank
+    @Email
+    @Size(max = 255)
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
+    @NotBlank
+    @Size(min = 6, max = 100)
     private String password;
 
     @Builder.Default
-    private Role role = Role.VISITOR; // По умолчанию VISITOR
+    private Role role = Role.VISITOR;
 }

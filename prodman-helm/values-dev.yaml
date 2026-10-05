@@ -1,0 +1,65 @@
+# Global settings - применяются ко всем сервисам
+global:
+  imagePullPolicy: IfNotPresent  # Политика загрузки образов: загружать только если нет локально
+  imageRegistry: "localhost:5000"  # Локальный Docker registry
+
+# Настройки namespace - окружение разработки
+namespace:
+  name: prodman-dev  # Используем dev окружение
+
+# Настройки Ingress - отключен для dev окружения
+ingress:
+  enabled: false  # Ingress не нужен в dev, используем port-forward
+
+# Настройки PostgreSQL - уменьшаем размер для dev
+postgresql:
+  storage:
+    size: 5Gi  # Уменьшенный размер для разработки
+
+# Настройки User Service
+userService:
+  replicas: 2  # 2 реплики для отказоустойчивости
+  revisionHistoryLimit: 0
+  image: prodman-user-service:latest  # ИСПРАВЛЕНО: добавлен префикс prodman-
+  hpa:
+    enabled: false  # ← ОПЦИОНАЛЬНО: отключить HPA
+  env:
+    SPRING_PROFILES_ACTIVE: docker  # Активируем Docker профиль
+    MANAGEMENT_HEALTH_REDIS_ENABLED: "false"  # Отключаем проверку Redis для health
+    SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresql:5432/prodman_users"  # Подключение к БД пользователей
+    SPRING_DATASOURCE_USERNAME: "postgres"  # Пользователь БД
+    SPRING_DATASOURCE_PASSWORD: "postgres"  # Пароль БД
+    SPRING_LIQUIBASE_ENABLED: "false"  # Отключаем Liquibase для dev (миграции БД)
+
+# Настройки API Gateway
+apiGateway:
+  replicas: 2  # 2 реплики для балансировки
+  revisionHistoryLimit: 0
+  image: prodman-api-gateway:latest  # ИСПРАВЛЕНО: добавлен префикс prodman-
+  hpa:
+    enabled: false  # ← ОПЦИОНАЛЬНО: отключить HPA
+  env:
+    SPRING_PROFILES_ACTIVE: docker  # Активируем Docker профиль
+    REDIS_HOST: "redis"  # Хост Redis для кеширования сессий
+    REDIS_PORT_NUMBER: "6379"  # Порт Redis
+    MANAGEMENT_HEALTH_REDIS_ENABLED: "false"  # Отключаем проверку Redis для health
+
+# Настройки Work Calendar Service
+workCalendar:
+  replicas: 2  # 2 реплики для отказоустойчивости
+  revisionHistoryLimit: 0
+  image: prodman-work-calendar:latest  # ИСПРАВЛЕНО: добавлен префикс prodman-
+  hpa:
+    enabled: false  # ← ОПЦИОНАЛЬНО: отключить HPA
+  env:
+    SPRING_PROFILES_ACTIVE: docker  # Активируем Docker профиль
+    MANAGEMENT_HEALTH_REDIS_ENABLED: "false"  # Отключаем проверку Redis для health
+    SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresql:5432/prodman_calendar"  # Подключение к БД календаря
+    SPRING_DATASOURCE_USERNAME: "postgres"  # Пользователь БД
+    SPRING_DATASOURCE_PASSWORD: "postgres"  # Пароль БД
+    SPRING_LIQUIBASE_ENABLED: "false"  # Отключаем Liquibase для dev (миграции БД)
+    SPRING_JPA_OPEN_IN_VIEW: "false"  # Отключает open-in-view
+    SPRING_LIFECYCLE_TIMEOUT-PER-SHUTDOWN-PHASE: "30s"  # Увеличивает таймаут завершения
+
+
+#  helm upgrade prodman . -f values.yaml -f values-dev.yaml

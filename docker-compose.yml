@@ -196,7 +196,7 @@ services:
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
       SERVER_PORT: 8081
-      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
+      SPRING_LIQUIBASE_ENABLED: true
     depends_on:
       user-service-postgres:
         condition: service_healthy
@@ -295,7 +295,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${EMPLOYEE_POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${EMPLOYEE_POSTGRES_PASSWORD:-password}
       SERVER_PORT: 8084
-      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
+      SPRING_LIQUIBASE_ENABLED: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
       interval: 30s
@@ -325,7 +325,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${TEST_POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${TEST_POSTGRES_PASSWORD:-password}
       SERVER_PORT: 8085
-      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
+      SPRING_LIQUIBASE_ENABLED: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
       interval: 30s

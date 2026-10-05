@@ -6,22 +6,30 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class EmployeeResponse {
-    private String id;
+    private UUID id;
+    private String code;
     private String firstName;
     private String lastName;
-    private String email;
-    private String phoneNumber;
-    private String department;
-    private String position;
+    private String middleName;
+    private String phone;
+    private LocalDate hiredAt;
+    private LocalDate firedAt;
     private EmployeeStatus status;
-    private String userId;
+    private UUID departmentId;
+    private String departmentName;
+    private UUID positionId;
+    private String positionName;
+    private UUID userId;
+    private Integer maxConsecutiveHours;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

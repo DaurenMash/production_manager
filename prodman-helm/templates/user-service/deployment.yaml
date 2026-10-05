@@ -1,0 +1,116 @@
+{{- if .Values.userService.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: user-service
+    {{- include "prodman.labels" . | nindent 4 }}
+spec:
+  # ИСПРАВЛЕНО: default изменен с 2 на 0 (не хранить старые ReplicaSet'ы)
+  revisionHistoryLimit: {{ .Values.userService.revisionHistoryLimit | default 0 }}
+  replicas: {{ .Values.userService.replicas }}
+  selector:
+    matchLabels:
+      app: user-service
+  # ДОБАВЛЕНО: стратегия обновления
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.userService.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.userService.targetPort }}
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.userService.env.SPRING_PROFILES_ACTIVE }}
+            - name: SERVER_PORT
+              value: {{ .Values.userService.env.SERVER_PORT | quote }}
+            - name: POSTGRES_HOST
+              value: postgresql
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: prodman-secrets
+                  key: postgres-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: prodman-secrets
+                  key: jwt-secret
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+          resources:
+            {{- toYaml .Values.userService.resources | nindent 12 }}
+          {{- if .Values.userService.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.userService.livenessProbe.path }}
+              port: {{ .Values.userService.targetPort }}
+            initialDelaySeconds: {{ .Values.userService.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.userService.livenessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.userService.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.userService.readinessProbe.path }}
+              port: {{ .Values.userService.targetPort }}
+            initialDelaySeconds: {{ .Values.userService.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.userService.readinessProbe.periodSeconds }}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: {{ .Values.namespace.name }}
+spec:
+  selector:
+    app: user-service
+  ports:
+    - port: {{ .Values.userService.port }}
+      targetPort: {{ .Values.userService.targetPort }}
+      name: http
+  type: ClusterIP
+---
+{{- if .Values.userService.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: user-service-hpa
+  namespace: {{ .Values.namespace.name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: user-service
+  minReplicas: {{ .Values.userService.hpa.minReplicas }}
+  maxReplicas: {{ .Values.userService.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.userService.hpa.targetCPUUtilizationPercentage }}
+{{- end }}
+{{- end }}

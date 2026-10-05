@@ -2,127 +2,169 @@ package com.prodman.userservice.service;
 
 import com.prodman.userservice.dto.request.LoginRequest;
 import com.prodman.userservice.dto.request.RefreshTokenRequest;
-import com.prodman.userservice.dto.request.RegisterRequest;
+import com.prodman.userservice.dto.request.RegisterTenantRequest;
 import com.prodman.userservice.dto.response.AuthResponse;
 import com.prodman.userservice.dto.response.UserResponse;
 import com.prodman.userservice.exception.CustomException;
 import com.prodman.userservice.mapper.UserMapper;
-import com.prodman.userservice.model.Role;
-import com.prodman.userservice.model.User;
+import com.prodman.userservice.model.*;
+import com.prodman.userservice.repository.TenantRepository;
 import com.prodman.userservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final AuthenticationManager authenticationManager;
+    private static final int DEFAULT_TRIAL_DAYS = 30;
+
     private final JwtService jwtService;
+    private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
 
-    public UserResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new CustomException.Conflict("Username already exists");
+    /**
+     * Регистрация нового тенанта (клиента) и первого пользователя-администратора.
+     * По умолчанию: status=TRIAL, plan=FREE, trial_ends_at = now + 30 дней.
+     */
+    @Transactional
+    public UserResponse registerTenant(RegisterTenantRequest req) {
+        if (tenantRepository.existsBySlug(req.getTenantSlug())) {
+            throw new CustomException.Conflict("Tenant slug already exists: " + req.getTenantSlug());
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new CustomException.Conflict("Email already exists");
+
+        Tenant tenant = Tenant.builder()
+                .name(req.getTenantName())
+                .slug(req.getTenantSlug())
+                .status(TenantStatus.TRIAL)
+                .plan(TenantPlan.FREE)
+                .trialEndsAt(LocalDateTime.now().plusDays(DEFAULT_TRIAL_DAYS))
+                .build();
+        tenant = tenantRepository.save(tenant);
+
+        if (userRepository.existsByTenantIdAndUsername(tenant.getId(), req.getUsername())) {
+            throw new CustomException.Conflict("Username already exists in tenant");
+        }
+        if (userRepository.existsByTenantIdAndEmail(tenant.getId(), req.getEmail())) {
+            throw new CustomException.Conflict("Email already exists in tenant");
         }
 
         User user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole() != null ? request.getRole() : Role.VISITOR)
+                .tenantId(tenant.getId())
+                .username(req.getUsername())
+                .email(req.getEmail())
+                .password(passwordEncoder.encode(req.getPassword()))
+                .role(Role.ADMIN)
                 .enabled(true)
                 .build();
+        user = userRepository.save(user);
 
-        User savedUser = userRepository.save(user);
-        return userMapper.toResponse(savedUser);
+        return userMapper.toResponse(user);
     }
 
-    public AuthResponse login(LoginRequest request) {
-        // ВРЕМЕННОЕ РЕШЕНИЕ: всегда возвращаем токен без проверки
-        return AuthResponse.builder()
-                .accessToken("fake-token-for-development")
-                .refreshToken("fake-refresh-token")
-                .userId("admin-id")
-                .username(request.getUsername() != null ? request.getUsername() : "admin")
-                .email("admin@prodman.com")
-                .role(Role.ADMIN)
-                .expiresIn(86400000L)
-                .build();
-    }
+    /**
+     * Логин.
+     *  - Если slug не указан — ищем PLATFORM_ADMIN (tenant_id = null).
+     *  - Если slug указан — находим тенант, потом юзера по (tenantId, username).
+     */
+    @Transactional(readOnly = true)
+    public AuthResponse login(LoginRequest req) {
+        User user;
+        Tenant tenant = null;
 
-//    public AuthResponse login(LoginRequest request) {
-//        Authentication authentication = authenticationManager.authenticate(
-//                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-//        );
-//
-//        SecurityContextHolder.getContext().setAuthentication(authentication);
-//
-//        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-//        User user = userRepository.findByUsername(userDetails.getUsername())
-//                .orElseThrow(() -> new CustomException.NotFound("User not found"));
-//
-//        String accessToken = jwtService.generateToken(userDetails);
-//        String refreshToken = jwtService.generateRefreshToken(userDetails);
-//
-//        return AuthResponse.builder()
-//                .accessToken(accessToken)
-//                .refreshToken(refreshToken)
-//                .userId(user.getId())
-//                .username(user.getUsername())
-//                .email(user.getEmail())
-//                .role(user.getRole())
-//                .expiresIn(86400000L)
-//                .build();
-//    }
-
-    public AuthResponse refresh(RefreshTokenRequest request) {
-        String refreshToken = request.getRefreshToken();
-        String username = jwtService.extractUsername(refreshToken);
-
-        if (username == null) {
-            throw new CustomException.Unauthorized("Invalid refresh token");
+        if (req.getSlug() == null || req.getSlug().isBlank()) {
+            // платформенный админ
+            user = userRepository.findByTenantIdIsNullAndUsername(req.getUsername())
+                    .orElseThrow(() -> new CustomException.Unauthorized("Invalid credentials"));
+        } else {
+            tenant = tenantRepository.findBySlug(req.getSlug())
+                    .orElseThrow(() -> new CustomException.Unauthorized("Invalid credentials"));
+            user = userRepository.findByTenantIdAndUsername(tenant.getId(), req.getUsername())
+                    .orElseThrow(() -> new CustomException.Unauthorized("Invalid credentials"));
         }
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new CustomException.NotFound("User not found"));
-
-        if (!jwtService.isTokenValid(refreshToken, user)) {
-            throw new CustomException.Unauthorized("Invalid or expired refresh token");
+        if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
+            throw new CustomException.Unauthorized("Invalid credentials");
+        }
+        if (!user.isEnabled()) {
+            throw new CustomException.Unauthorized("User disabled");
+        }
+        if (tenant != null && (tenant.getStatus() == TenantStatus.SUSPENDED
+                || tenant.getStatus() == TenantStatus.CANCELLED)) {
+            throw new CustomException.Unauthorized("Tenant is " + tenant.getStatus());
         }
 
-        String newAccessToken = jwtService.generateToken(user);
-        String newRefreshToken = jwtService.generateRefreshToken(user);
+        String role = "ROLE_" + user.getRole().name();
+        String tenantStatus = tenant == null ? null : tenant.getStatus().name();
+
+        String accessToken = jwtService.generateToken(
+                user.getUsername(), user.getId(), role, user.getTenantId(), tenantStatus);
+        String refreshToken = jwtService.generateRefreshToken(
+                user.getUsername(), user.getId(), user.getTenantId());
 
         return AuthResponse.builder()
-                .accessToken(newAccessToken)
-                .refreshToken(newRefreshToken)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .userId(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .role(user.getRole())
+                .tenantId(user.getTenantId())
+                .tenantSlug(tenant == null ? null : tenant.getSlug())
+                .tenantStatus(tenant == null ? null : tenant.getStatus())
+                .tenantPlan(tenant == null ? null : tenant.getPlan())
                 .expiresIn(86400000L)
                 .build();
     }
 
-    public void logout(String token) {
-        System.out.println("Logout called with token: " + token);
-    }
+    @Transactional(readOnly = true)
+    public AuthResponse refresh(RefreshTokenRequest req) {
+        String token = req.getRefreshToken();
+        if (!jwtService.isTokenValid(token)) {
+            throw new CustomException.Unauthorized("Invalid or expired refresh token");
+        }
+        String username = jwtService.extractUsername(token);
+        UUID tenantId = jwtService.extractTenantId(token);
 
-    public UserResponse getCurrentUser(String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new CustomException.NotFound("User not found with username: " + username));
-        return userMapper.toResponse(user);
+        User user;
+        Tenant tenant = null;
+        if (tenantId == null) {
+            user = userRepository.findByTenantIdIsNullAndUsername(username)
+                    .orElseThrow(() -> new CustomException.NotFound("User not found"));
+        } else {
+            tenant = tenantRepository.findById(tenantId)
+                    .orElseThrow(() -> new CustomException.NotFound("Tenant not found"));
+            user = userRepository.findByTenantIdAndUsername(tenantId, username)
+                    .orElseThrow(() -> new CustomException.NotFound("User not found"));
+        }
+
+        String role = "ROLE_" + user.getRole().name();
+        String tenantStatus = tenant == null ? null : tenant.getStatus().name();
+
+        String newAccess = jwtService.generateToken(
+                user.getUsername(), user.getId(), role, user.getTenantId(), tenantStatus);
+        String newRefresh = jwtService.generateRefreshToken(
+                user.getUsername(), user.getId(), user.getTenantId());
+
+        return AuthResponse.builder()
+                .accessToken(newAccess)
+                .refreshToken(newRefresh)
+                .userId(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .tenantId(user.getTenantId())
+                .tenantSlug(tenant == null ? null : tenant.getSlug())
+                .tenantStatus(tenant == null ? null : tenant.getStatus())
+                .tenantPlan(tenant == null ? null : tenant.getPlan())
+                .expiresIn(86400000L)
+                .build();
     }
 }

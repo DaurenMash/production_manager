@@ -1,12 +1,16 @@
 package com.prodman.userservice.controller;
 
+import com.prodman.userservice.dto.request.RegisterRequest;
 import com.prodman.userservice.dto.response.UserResponse;
 import com.prodman.userservice.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -16,29 +20,23 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    public ResponseEntity<List<UserResponse>> getAllUsers() {
-        try {
-            List<UserResponse> users = userService.getAllUsers();
-            return ResponseEntity.ok(users);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).build();
-        }
+    public ResponseEntity<Page<UserResponse>> list(Pageable pageable) {
+        return ResponseEntity.ok(userService.list(pageable));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getUserById(@PathVariable String id) {
-        return ResponseEntity.ok(userService.getUserById(id));
+    public ResponseEntity<UserResponse> get(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.getById(id));
     }
 
-    @GetMapping("/username/{username}")
-    public ResponseEntity<UserResponse> getUserByUsername(@PathVariable String username) {
-        return ResponseEntity.ok(userService.getUserByUsername(username));
+    @PostMapping
+    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest req) {
+        return ResponseEntity.ok(userService.register(req));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
-        userService.deleteUser(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        userService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -3,117 +3,169 @@ package com.prodman.employeeservice.service;
 import com.prodman.employeeservice.dto.request.CreateEmployeeRequest;
 import com.prodman.employeeservice.dto.request.UpdateEmployeeRequest;
 import com.prodman.employeeservice.dto.response.EmployeeResponse;
+import com.prodman.employeeservice.model.Department;
 import com.prodman.employeeservice.model.Employee;
-import com.prodman.employeeservice.model.EmployeeStatus;
+import com.prodman.employeeservice.model.Position;
+import com.prodman.employeeservice.repository.DepartmentRepository;
 import com.prodman.employeeservice.repository.EmployeeRepository;
+import com.prodman.employeeservice.repository.PositionRepository;
+import com.prodman.employeeservice.tenant.TenantContext;
+import com.prodman.employeeservice.util.PhoneUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
+    private final DepartmentRepository departmentRepository;
+    private final PositionRepository positionRepository;
+
+    @Transactional(readOnly = true)
+    public Page<EmployeeResponse> list(Pageable pageable) {
+        UUID tenantId = TenantContext.require();
+        return employeeRepository.findAllByTenantId(tenantId, pageable).map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public EmployeeResponse get(UUID id) {
+        UUID tenantId = TenantContext.require();
+        Employee e = employeeRepository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + id));
+        return toResponse(e);
+    }
 
     @Transactional
-    public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
-        if (employeeRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Employee with email " + request.getEmail() + " already exists");
+    public EmployeeResponse create(CreateEmployeeRequest req) {
+        UUID tenantId = TenantContext.require();
+        String phoneE164 = PhoneUtils.toE164(req.getPhone());
+
+        if (employeeRepository.existsByTenantIdAndCode(tenantId, req.getCode())) {
+            throw new IllegalArgumentException("Employee code already exists: " + req.getCode());
+        }
+        if (employeeRepository.existsByTenantIdAndPhone(tenantId, phoneE164)) {
+            throw new IllegalArgumentException("Employee phone already exists: " + phoneE164);
         }
 
-        Employee employee = Employee.builder()
-            .firstName(request.getFirstName())
-            .lastName(request.getLastName())
-            .email(request.getEmail())
-            .phoneNumber(request.getPhoneNumber())
-            .department(request.getDepartment())
-            .position(request.getPosition())
-            .status(EmployeeStatus.AVAILABLE)
-            .userId(request.getUserId())
-            .build();
+        Department department = resolveDepartment(req.getDepartmentId(), tenantId);
+        Position position = resolvePosition(req.getPositionId(), tenantId);
+        validateDepartmentPositionConsistency(department, position);
 
-        Employee saved = employeeRepository.save(employee);
-        return toResponse(saved);
+        Employee e = Employee.builder()
+                .tenantId(tenantId)
+                .code(req.getCode())
+                .firstName(req.getFirstName())
+                .lastName(req.getLastName())
+                .middleName(req.getMiddleName())
+                .phone(phoneE164)
+                .hiredAt(req.getHiredAt())
+                .firedAt(req.getFiredAt())
+                .department(department)
+                .position(position)
+                .userId(req.getUserId())
+                .maxConsecutiveHours(req.getMaxConsecutiveHours() == null ? 12 : req.getMaxConsecutiveHours())
+                .build();
+
+        return toResponse(employeeRepository.save(e));
     }
 
     @Transactional
-    public EmployeeResponse updateEmployee(String id, UpdateEmployeeRequest request) {
-        Employee employee = employeeRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Employee not found"));
+    public EmployeeResponse update(UUID id, UpdateEmployeeRequest req) {
+        UUID tenantId = TenantContext.require();
+        Employee e = employeeRepository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + id));
 
-        if (request.getFirstName() != null) employee.setFirstName(request.getFirstName());
-        if (request.getLastName() != null) employee.setLastName(request.getLastName());
-        if (request.getPhoneNumber() != null) employee.setPhoneNumber(request.getPhoneNumber());
-        if (request.getDepartment() != null) employee.setDepartment(request.getDepartment());
-        if (request.getPosition() != null) employee.setPosition(request.getPosition());
-        if (request.getStatus() != null) employee.setStatus(request.getStatus());
-        if (request.getUserId() != null) {
-            // Проверяем, что userId не занят другим сотрудником
-            employeeRepository.findByUserId(request.getUserId())
-                .ifPresent(existing -> {
-                    if (!existing.getId().equals(id)) {
-                        throw new RuntimeException("User ID already assigned to another employee");
-                    }
-                });
-            employee.setUserId(request.getUserId());
+        String phoneE164 = PhoneUtils.toE164(req.getPhone());
+        if (employeeRepository.existsByTenantIdAndCodeAndIdNot(tenantId, req.getCode(), id)) {
+            throw new IllegalArgumentException("Employee code already exists: " + req.getCode());
+        }
+        if (employeeRepository.existsByTenantIdAndPhoneAndIdNot(tenantId, phoneE164, id)) {
+            throw new IllegalArgumentException("Employee phone already exists: " + phoneE164);
         }
 
-        Employee saved = employeeRepository.save(employee);
-        return toResponse(saved);
+        Department department = resolveDepartment(req.getDepartmentId(), tenantId);
+        Position position = resolvePosition(req.getPositionId(), tenantId);
+        validateDepartmentPositionConsistency(department, position);
+
+        e.setCode(req.getCode());
+        e.setFirstName(req.getFirstName());
+        e.setLastName(req.getLastName());
+        e.setMiddleName(req.getMiddleName());
+        e.setPhone(phoneE164);
+        e.setHiredAt(req.getHiredAt());
+        e.setFiredAt(req.getFiredAt());
+        e.setDepartment(department);
+        e.setPosition(position);
+        e.setUserId(req.getUserId());
+        if (req.getMaxConsecutiveHours() != null) {
+            e.setMaxConsecutiveHours(req.getMaxConsecutiveHours());
+        }
+        return toResponse(employeeRepository.save(e));
     }
 
     @Transactional
-    public void deleteEmployee(String id) {
-        employeeRepository.deleteById(id);
+    public void delete(UUID id) {
+        UUID tenantId = TenantContext.require();
+        Employee e = employeeRepository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + id));
+        employeeRepository.delete(e);
     }
 
-    public List<EmployeeResponse> getAllEmployees() {
-        return employeeRepository.findAll().stream()
-            .map(this::toResponse)
-            .collect(Collectors.toList());
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
+    private Department resolveDepartment(UUID departmentId, UUID tenantId) {
+        if (departmentId == null) return null;
+        return departmentRepository.findByIdAndTenantId(departmentId, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Department not found in this tenant: " + departmentId));
     }
 
-    public EmployeeResponse getEmployeeById(String id) {
-        Employee employee = employeeRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Employee not found"));
-        return toResponse(employee);
+    private Position resolvePosition(UUID positionId, UUID tenantId) {
+        if (positionId == null) return null;
+        return positionRepository.findByIdAndTenantId(positionId, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Position not found in this tenant: " + positionId));
     }
 
-    public EmployeeResponse getEmployeeByEmail(String email) {
-        Employee employee = employeeRepository.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("Employee not found"));
-        return toResponse(employee);
+    /**
+     * Если заданы и department, и position, то position.departmentId
+     * должен совпадать с department.id.
+     */
+    private void validateDepartmentPositionConsistency(Department department, Position position) {
+        if (department != null && position != null
+                && !position.getDepartmentId().equals(department.getId())) {
+            throw new IllegalArgumentException(
+                    "Position " + position.getId() + " does not belong to department " + department.getId());
+        }
     }
 
-    public EmployeeResponse getEmployeeByUserId(String userId) {
-        Employee employee = employeeRepository.findByUserId(userId)
-            .orElseThrow(() -> new RuntimeException("Employee not found for user: " + userId));
-        return toResponse(employee);
-    }
-
-    public List<EmployeeResponse> getEmployeesByStatus(EmployeeStatus status) {
-        return employeeRepository.findByStatus(status).stream()
-            .map(this::toResponse)
-            .collect(Collectors.toList());
-    }
-
-    private EmployeeResponse toResponse(Employee employee) {
+    private EmployeeResponse toResponse(Employee e) {
         return EmployeeResponse.builder()
-            .id(employee.getId())
-            .firstName(employee.getFirstName())
-            .lastName(employee.getLastName())
-            .email(employee.getEmail())
-            .phoneNumber(employee.getPhoneNumber())
-            .department(employee.getDepartment())
-            .position(employee.getPosition())
-            .status(employee.getStatus())
-            .userId(employee.getUserId())
-            .createdAt(employee.getCreatedAt())
-            .updatedAt(employee.getUpdatedAt())
-            .build();
+                .id(e.getId())
+                .code(e.getCode())
+                .firstName(e.getFirstName())
+                .lastName(e.getLastName())
+                .middleName(e.getMiddleName())
+                .phone(e.getPhone())
+                .hiredAt(e.getHiredAt())
+                .firedAt(e.getFiredAt())
+                .status(e.getStatus())
+                .departmentId(e.getDepartment() == null ? null : e.getDepartment().getId())
+                .departmentName(e.getDepartment() == null ? null : e.getDepartment().getName())
+                .positionId(e.getPosition() == null ? null : e.getPosition().getId())
+                .positionName(e.getPosition() == null ? null : e.getPosition().getName())
+                .userId(e.getUserId())
+                .maxConsecutiveHours(e.getMaxConsecutiveHours())
+                .createdAt(e.getCreatedAt())
+                .updatedAt(e.getUpdatedAt())
+                .build();
     }
 }
