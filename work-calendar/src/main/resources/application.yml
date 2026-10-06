@@ -1,54 +1,32 @@
 spring:
   application:
     name: work-calendar
-  main:
-    allow-circular-references: true
-    lazy-initialization: true
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://work-calendar-postgres:5432/prodman_calendar}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
-  liquibase:
-    enabled: true
-    change-log: classpath:/db/changelog/db.changelog-master.xml
-  data:
-    redis:
-      host: ${REDIS_HOST:redis}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      timeout: 2000ms
-      lettuce:
-        pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 2
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
 
 server:
   port: ${SERVER_PORT:8082}
-  forward-headers-strategy: framework
-
-employee:
-  service:
-    url: ${EMPLOYEE_SERVICE_URL:http://employee-service-app:8084}
 
 logging:
   level:
-    com.prodman.workcalendar: INFO
-    org.springframework.security: WARN
-    org.hibernate: WARN
-    org.springframework.web: WARN
+    com.prodman.workcalendar: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    liquibase: INFO
 
 springdoc:
   api-docs:
@@ -57,12 +35,6 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
-    tryItOutEnabled: true
-    operationsSorter: method
-    tagsSorter: alpha
-    display-request-duration: true
-#  show-actuator: true
-#  packages-to-scan: com.prodman.workcalendar.controller
 
 management:
   endpoints:

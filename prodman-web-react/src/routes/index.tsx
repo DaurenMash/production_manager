@@ -12,6 +12,7 @@ import UsersList from '../pages/Users/UsersList';
 import PositionsList from '../pages/Dictionaries/Positions/PositionsList';
 import DepartmentsList from '../pages/Dictionaries/Departments/DepartmentsList';
 import QualificationsList from '../pages/Dictionaries/Qualifications/QualificationsList';
+import ShiftPatternsList from '../pages/ShiftPatterns/ShiftPatternsList';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 
 export const router = createBrowserRouter([
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
           { path: 'equipment', element: <Equipment /> },
           { path: 'tests', element: <TestsList /> },
           { path: 'calendar', element: <WorkCalendar /> },
+          { path: 'shift-patterns', element: <ShiftPatternsList /> },
           { path: 'workstations', element: <WorkstationsList /> },
           { path: 'users', element: <UsersList /> },
           // Справочники

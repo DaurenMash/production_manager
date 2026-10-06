@@ -14,6 +14,7 @@ import {
   MenuUnfoldOutlined,
   SafetyCertificateOutlined,
   BookOutlined,
+  ClockCircleOutlined,
   IdcardOutlined,
   ApartmentOutlined,
 } from '@ant-design/icons';
@@ -33,6 +34,7 @@ const MainLayout = () => {
     { key: '/equipment', icon: <AppstoreOutlined />, label: 'Оборудование' },
     { key: '/tests', icon: <ExperimentOutlined />, label: 'Тестирование' },
     { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },
+    { key: '/shift-patterns', icon: <ClockCircleOutlined />, label: 'Шаблоны смен' },
     { key: '/workstations', icon: <SettingOutlined />, label: 'Рабочие места' },
     {
       key: 'dictionaries',
