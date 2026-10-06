@@ -6,30 +6,21 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class WorkstationResponse {
-    private String id;
-    private String department;
-    private String title;
-    private String createdBy;
-    private LocalDateTime createdAt;
+    private UUID id;
+    private UUID departmentId;
+    private UUID requiredQualificationId;
+    private String code;
+    private String name;
+    private String description;
     private Boolean isActive;
-    private List<String> employeeIds;
-    private List<EmployeeInfo> employees;
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class EmployeeInfo {
-        private String id;
-        private String firstName;
-        private String lastName;
-        private String email;
-    }
+    private UUID createdBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

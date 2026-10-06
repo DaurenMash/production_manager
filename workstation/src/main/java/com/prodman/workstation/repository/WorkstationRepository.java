@@ -1,31 +1,24 @@
 package com.prodman.workstation.repository;
 
 import com.prodman.workstation.model.Workstation;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface WorkstationRepository extends JpaRepository<Workstation, String> {
+public interface WorkstationRepository extends JpaRepository<Workstation, UUID> {
 
-    /**
-     * Найти все активные рабочие места
-     */
-    List<Workstation> findByIsActiveTrue();
+    Page<Workstation> findAllByTenantId(UUID tenantId, Pageable pageable);
 
-    /**
-     * Найти рабочие места по отделу (без учета регистра)
-     */
-    List<Workstation> findByDepartmentContainingIgnoreCase(String department);
+    Page<Workstation> findAllByTenantIdAndDepartmentId(UUID tenantId, UUID departmentId, Pageable pageable);
 
-    /**
-     * Найти рабочие места по названию (без учета регистра)
-     */
-    List<Workstation> findByTitleContainingIgnoreCase(String title);
+    Optional<Workstation> findByIdAndTenantId(UUID id, UUID tenantId);
 
-    /**
-     * Найти рабочие места, где работает конкретный сотрудник
-     */
-    List<Workstation> findByEmployeeIdsContaining(String employeeId);
+    boolean existsByTenantIdAndCode(UUID tenantId, String code);
+
+    boolean existsByTenantIdAndCodeAndIdNot(UUID tenantId, String code, UUID id);
 }

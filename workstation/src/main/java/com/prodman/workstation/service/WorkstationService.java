@@ -1,137 +1,100 @@
 package com.prodman.workstation.service;
 
 import com.prodman.workstation.dto.request.CreateWorkstationRequest;
+import com.prodman.workstation.dto.request.UpdateWorkstationRequest;
 import com.prodman.workstation.dto.response.WorkstationResponse;
 import com.prodman.workstation.model.Workstation;
 import com.prodman.workstation.repository.WorkstationRepository;
+import com.prodman.workstation.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class WorkstationService {
 
-    private final WorkstationRepository workstationRepository;
-    private final RestTemplate restTemplate;
+    private final WorkstationRepository repository;
 
-    @Value("${user.service.url:http://user-service-app:8081}")
-    private String userServiceUrl;
+    @Transactional(readOnly = true)
+    public Page<WorkstationResponse> list(Pageable pageable) {
+        UUID tenantId = TenantContext.require();
+        return repository.findAllByTenantId(tenantId, pageable).map(this::toResponse);
+    }
 
-    @Value("${employee.service.url:http://employee-service-app:8084}")
-    private String employeeServiceUrl;
+    @Transactional(readOnly = true)
+    public Page<WorkstationResponse> listByDepartment(UUID departmentId, Pageable pageable) {
+        UUID tenantId = TenantContext.require();
+        return repository.findAllByTenantIdAndDepartmentId(tenantId, departmentId, pageable).map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public WorkstationResponse get(UUID id) {
+        UUID tenantId = TenantContext.require();
+        Workstation w = repository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("Workstation not found: " + id));
+        return toResponse(w);
+    }
 
     @Transactional
-    public WorkstationResponse createWorkstation(CreateWorkstationRequest request) {
-        Workstation workstation = Workstation.builder()
-                .department(request.getDepartment())
-                .title(request.getTitle())
-                .createdBy(request.getCreatedBy())
-                .isActive(true)
-                .employeeIds(request.getEmployeeIds() != null ? request.getEmployeeIds() : new ArrayList<>())
+    public WorkstationResponse create(CreateWorkstationRequest req) {
+        UUID tenantId = TenantContext.require();
+        if (repository.existsByTenantIdAndCode(tenantId, req.getCode())) {
+            throw new IllegalArgumentException("Workstation code already exists: " + req.getCode());
+        }
+        Workstation w = Workstation.builder()
+                .tenantId(tenantId)
+                .departmentId(req.getDepartmentId())
+                .requiredQualificationId(req.getRequiredQualificationId())
+                .code(req.getCode())
+                .name(req.getName())
+                .description(req.getDescription())
+                .isActive(req.getIsActive() == null ? Boolean.TRUE : req.getIsActive())
                 .build();
-
-        Workstation saved = workstationRepository.save(workstation);
-        return toResponse(saved);
+        return toResponse(repository.save(w));
     }
 
     @Transactional
-    public WorkstationResponse updateWorkstation(String id, CreateWorkstationRequest request) {
-        Workstation workstation = workstationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Workstation not found"));
-
-        workstation.setDepartment(request.getDepartment());
-        workstation.setTitle(request.getTitle());
-        workstation.setEmployeeIds(request.getEmployeeIds() != null ? request.getEmployeeIds() : new ArrayList<>());
-
-        Workstation saved = workstationRepository.save(workstation);
-        return toResponse(saved);
-    }
-
-    @Transactional
-    public WorkstationResponse toggleActive(String id) {
-        Workstation workstation = workstationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Workstation not found"));
-
-        workstation.setIsActive(!workstation.getIsActive());
-        Workstation saved = workstationRepository.save(workstation);
-        return toResponse(saved);
-    }
-
-    @Transactional
-    public void deleteWorkstation(String id) {
-        workstationRepository.deleteById(id);
-    }
-
-    @Transactional
-    public WorkstationResponse addEmployees(String workstationId, List<String> employeeIds) {
-        Workstation workstation = workstationRepository.findById(workstationId)
-                .orElseThrow(() -> new RuntimeException("Workstation not found"));
-
-        for (String employeeId : employeeIds) {
-            if (!workstation.getEmployeeIds().contains(employeeId)) {
-                workstation.getEmployeeIds().add(employeeId);
-            }
+    public WorkstationResponse update(UUID id, UpdateWorkstationRequest req) {
+        UUID tenantId = TenantContext.require();
+        Workstation w = repository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("Workstation not found: " + id));
+        if (repository.existsByTenantIdAndCodeAndIdNot(tenantId, req.getCode(), id)) {
+            throw new IllegalArgumentException("Workstation code already exists: " + req.getCode());
         }
-
-        Workstation saved = workstationRepository.save(workstation);
-        return toResponse(saved);
+        w.setDepartmentId(req.getDepartmentId());
+        w.setRequiredQualificationId(req.getRequiredQualificationId());
+        w.setCode(req.getCode());
+        w.setName(req.getName());
+        w.setDescription(req.getDescription());
+        if (req.getIsActive() != null) w.setIsActive(req.getIsActive());
+        return toResponse(repository.save(w));
     }
 
     @Transactional
-    public WorkstationResponse removeEmployee(String workstationId, String employeeId) {
-        Workstation workstation = workstationRepository.findById(workstationId)
-                .orElseThrow(() -> new RuntimeException("Workstation not found"));
-
-        workstation.getEmployeeIds().remove(employeeId);
-        Workstation saved = workstationRepository.save(workstation);
-        return toResponse(saved);
+    public void delete(UUID id) {
+        UUID tenantId = TenantContext.require();
+        Workstation w = repository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> new IllegalArgumentException("Workstation not found: " + id));
+        repository.delete(w);
     }
 
-    public List<WorkstationResponse> getAllWorkstations() {
-        return workstationRepository.findAll().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-    }
-
-    public WorkstationResponse getWorkstationById(String id) {
-        Workstation workstation = workstationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Workstation not found"));
-        return toResponse(workstation);
-    }
-
-    private WorkstationResponse toResponse(Workstation workstation) {
-        // Получаем данные сотрудников из work-calendar-service
-        List<WorkstationResponse.EmployeeInfo> employeeInfos = new ArrayList<>();
-        for (String employeeId : workstation.getEmployeeIds()) {
-            try {
-                // Используем эндпоинт для получения сотрудника из work-calendar
-                String url = employeeServiceUrl + "/api/v1/employees/" + employeeId;
-                WorkstationResponse.EmployeeInfo info = restTemplate.getForObject(url, WorkstationResponse.EmployeeInfo.class);
-                if (info != null) {
-                    employeeInfos.add(info);
-                }
-            } catch (Exception e) {
-                // Сотрудник не найден — пропускаем
-                System.err.println("Employee not found: " + employeeId);
-            }
-        }
-
+    private WorkstationResponse toResponse(Workstation w) {
         return WorkstationResponse.builder()
-                .id(workstation.getId())
-                .department(workstation.getDepartment())
-                .title(workstation.getTitle())
-                .createdBy(workstation.getCreatedBy())
-                .createdAt(workstation.getCreatedAt())
-                .isActive(workstation.getIsActive())
-                .employeeIds(workstation.getEmployeeIds())
-                .employees(employeeInfos)
+                .id(w.getId())
+                .departmentId(w.getDepartmentId())
+                .requiredQualificationId(w.getRequiredQualificationId())
+                .code(w.getCode())
+                .name(w.getName())
+                .description(w.getDescription())
+                .isActive(w.getIsActive())
+                .createdBy(w.getCreatedBy())
+                .createdAt(w.getCreatedAt())
+                .updatedAt(w.getUpdatedAt())
                 .build();
     }
 }

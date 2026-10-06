@@ -185,7 +185,6 @@ services:
     ports:
       - "${USER_SERVICE_PORT:-8081}:8081"
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://user-service-postgres:5432/${USER_POSTGRES_DB:-prodman_users}
       SPRING_DATASOURCE_USERNAME: ${USER_POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${USER_POSTGRES_PASSWORD:-password}
@@ -195,8 +194,6 @@ services:
       JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
-      SERVER_PORT: 8081
-      SPRING_LIQUIBASE_ENABLED: true
     depends_on:
       user-service-postgres:
         condition: service_healthy
@@ -223,15 +220,12 @@ services:
     ports:
       - "${WORK_SERVICE_PORT:-8082}:8082"
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://work-calendar-postgres:5432/${WORK_POSTGRES_DB:-prodman_calendar}
       SPRING_DATASOURCE_USERNAME: ${WORK_POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${WORK_POSTGRES_PASSWORD:-password}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
       SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      SERVER_PORT: 8082
-      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
       EMPLOYEE_SERVICE_URL: http://employee-service-app:8084
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
@@ -259,12 +253,9 @@ services:
     ports:
       - "${WORKSTATION_SERVICE_PORT:-8083}:8083"
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://workstation-postgres:5432/${WORKSTATION_POSTGRES_DB:-prodman_workstations}
       SPRING_DATASOURCE_USERNAME: ${WORKSTATION_POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${WORKSTATION_POSTGRES_PASSWORD:-password}
-      SERVER_PORT: 8083
-      SPRING_LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED:-false}
       EMPLOYEE_SERVICE_URL: http://employee-service-app:8084
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
@@ -290,12 +281,9 @@ services:
     ports:
       - "${EMPLOYEE_SERVICE_PORT:-8084}:8084"
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://employee-postgres:5432/${EMPLOYEE_POSTGRES_DB:-prodman_employees}
       SPRING_DATASOURCE_USERNAME: ${EMPLOYEE_POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${EMPLOYEE_POSTGRES_PASSWORD:-password}
-      SERVER_PORT: 8084
-      SPRING_LIQUIBASE_ENABLED: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
       interval: 30s
@@ -320,12 +308,9 @@ services:
     ports:
       - "${TEST_SERVICE_PORT:-8085}:8085"
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://test-postgres:5432/${TEST_POSTGRES_DB:-prodman_tests}
       SPRING_DATASOURCE_USERNAME: ${TEST_POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${TEST_POSTGRES_PASSWORD:-password}
-      SERVER_PORT: 8085
-      SPRING_LIQUIBASE_ENABLED: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
       interval: 30s
@@ -350,7 +335,6 @@ services:
     ports:
       - "${API_GATEWAY_PORT:-8888}:8888"
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       USER_SERVICE_URL: http://user-service-app:8081
       WORK_CALENDAR_URL: http://work-calendar-app:8082
       WORKSTATION_SERVICE_URL: http://workstation-app:8083

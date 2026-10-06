@@ -14,12 +14,11 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CreateWorkstationRequest {
+public class UpdateWorkstationRequest {
 
     @NotNull
     private UUID departmentId;
 
-    /** Обязательная квалификация. Может быть NULL, если станок не требует квалификации. */
     private UUID requiredQualificationId;
 
     @NotBlank

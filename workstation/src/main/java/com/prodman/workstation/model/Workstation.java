@@ -1,55 +1,74 @@
 package com.prodman.workstation.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.UUID;
 
-@Data
 @Entity
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
+@ToString(onlyExplicitlyIncluded = true)
 @Table(name = "workstations")
 public class Workstation {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
+    @Column(name = "id", updatable = false, nullable = false)
+    @ToString.Include
+    private UUID id;
 
-    @Column(nullable = false)
-    private String department;
+    @Column(name = "tenant_id", nullable = false, updatable = false)
+    private UUID tenantId;
 
-    @Column(nullable = false)
-    private String title;
+    /** Отдел, к которому привязана станция. Ссылка на employee-service.departments (логическая). */
+    @Column(name = "department_id", nullable = false)
+    private UUID departmentId;
 
-    @Column(name = "created_by", nullable = false)
-    private String createdBy;
+    /** Требуемая квалификация для работы на станции. Ссылка на employee-service.qualifications (логическая). Может быть NULL. */
+    @Column(name = "required_qualification_id")
+    private UUID requiredQualificationId;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "code", nullable = false)
+    @ToString.Include
+    private String code;
+
+    @Column(name = "name", nullable = false)
+    @ToString.Include
+    private String name;
+
+    @Column(name = "description")
+    private String description;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
 
-    // ⚠️ ManyToMany через отдельную таблицу (не JPA связь, а просто список ID)
-    @ElementCollection
-    @CollectionTable(
-        name = "workstation_employees",
-        joinColumns = @JoinColumn(name = "workstation_id")
-    )
-    @Column(name = "employee_id")
-    @Builder.Default
-    private List<String> employeeIds = new ArrayList<>();
+    /** user_id из user-service, кто создал. */
+    @Column(name = "created_by")
+    private UUID createdBy;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+        if (isActive == null) isActive = true;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
