@@ -1,0 +1,40 @@
+// workstation
+// Схема БД сервиса рабочих станций.
+// Мультитенантность: каждая сущность принадлежит тенанту (tenant_id).
+// См. ADR-0002.
+
+Project prodman_workstation {
+  database_type: 'PostgreSQL'
+  Note: 'Рабочие станции. Database-per-service. Shared schema + tenant_id.'
+}
+
+// -----------------------------
+// Tenants (локальная проекция)
+// -----------------------------
+Table tenants_ref {
+  id uuid [pk, note: 'Совпадает с Tenant.id в user-service']
+}
+
+// -----------------------------
+// Workstations
+// -----------------------------
+Table workstations {
+  id                         uuid         [pk, note: 'UUID v7']
+  tenant_id                  uuid         [not null, ref: > tenants_ref.id]
+  department_id              uuid         [not null, note: 'Логическая ссылка на employee-service.departments']
+  required_qualification_id  uuid         [note: 'Логическая ссылка на employee-service.qualifications. Может быть NULL.']
+  code                       varchar(64)  [not null, note: 'Уникален в рамках тенанта']
+  name                       varchar(255) [not null]
+  description                text
+  is_active                  boolean      [not null, default: true]
+  created_by                 uuid         [note: 'user_id из user-service']
+  created_at                 timestamptz  [not null, default: `now()`]
+  updated_at                 timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, code)                       [unique, name: 'ux_workstations_tenant_code']
+    (tenant_id, department_id)              [name: 'ix_workstations_tenant_department']
+    (tenant_id, required_qualification_id)  [name: 'ix_workstations_tenant_qualification']
+    (tenant_id, is_active)                  [name: 'ix_workstations_tenant_active']
+  }
+}

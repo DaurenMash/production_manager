@@ -28,8 +28,9 @@
 
 ## Оглавление
 
-- [`employee-service.dbml`](./employee-service.dbml) — сотрудники, отделы, должности
-- _позже: `user-service.dbml`, `work-calendar.dbml`, `workstation.dbml`, `test-service.dbml`_
+- [`employee-service.dbml`](./employee-service.dbml) — сотрудники, отделы, должности, квалификации
+- [`workstation.dbml`](./workstation.dbml) — рабочие станции
+- _позже: `user-service.dbml`, `work-calendar.dbml`, `test-service.dbml`_
 
 ## См. также
 
