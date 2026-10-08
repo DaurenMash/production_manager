@@ -1,17 +1,16 @@
-﻿import { useEffect, useMemo, useState, type ReactNode } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import {
   Typography, Space, Button, Select, DatePicker, message, Tag, Modal, Form,
-  Input, InputNumber, Popconfirm, Card, Empty,
+  Popconfirm, Card, Empty, Switch, Tooltip, Badge,
 } from 'antd';
 import {
-  LeftOutlined, RightOutlined, ReloadOutlined,
+  LeftOutlined, RightOutlined, ReloadOutlined, SettingOutlined,
+  PlusOutlined, UserAddOutlined, CloseOutlined,
 } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
-import isoWeek from 'dayjs/plugin/isoWeek';
 import {
-  DndContext, DragOverlay,
-  PointerSensor, useSensor, useSensors, useDroppable, useDraggable,
-  type DragEndEvent, type DragStartEvent,
+  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  useDroppable, useDraggable, type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core';
 
 import { employeesApi } from '../../api/employees.api';
@@ -22,56 +21,38 @@ import { workstationsApi } from '../../api/workstations.api';
 import type { Workstation } from '../../api/workstations.api';
 import { shiftPatternsApi } from '../../api/shiftPatterns.api';
 import type { ShiftPattern } from '../../api/shiftPatterns.api';
-import { shiftAssignmentsApi } from '../../api/shiftAssignments.api';
-import type { ShiftAssignment } from '../../api/shiftAssignments.api';
-
-dayjs.extend(isoWeek);
+import { workCalendarApi } from '../../api/workCalendar.api';
+import type { DayBoard, ShiftSlot, WorkstationBoard, ShiftBoard } from '../../api/workCalendar.api';
 
 const { Title, Text } = Typography;
 
-type ViewMode = 'week' | 'month';
-
-interface CellKey {
-  employeeId: string;
-  date: string;
-}
+type SlotDragData = { type: 'employee'; employee: Employee };
+type SlotDropData = { type: 'slot'; slot: ShiftSlot; workstationId: string; shiftPatternId: string };
 
 const WorkCalendar = () => {
-  const [view, setView] = useState<ViewMode>('week');
   const [anchor, setAnchor] = useState<Dayjs>(dayjs());
   const [departmentId, setDepartmentId] = useState<string | undefined>();
+  const [board, setBoard] = useState<DayBoard | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [workstations, setWorkstations] = useState<Workstation[]>([]);
   const [patterns, setPatterns] = useState<ShiftPattern[]>([]);
-  const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
 
-  const [activePattern, setActivePattern] = useState<ShiftPattern | null>(null);
+  const [activeEmployee, setActiveEmployee] = useState<Employee | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<ShiftAssignment | null>(null);
-  const [form] = Form.useForm();
-  const [saving, setSaving] = useState(false);
+  // Modal: настройки станков на день
+  const [wsSettingsOpen, setWsSettingsOpen] = useState(false);
+  const [wsSettingsForm] = Form.useForm();
 
-  const rangeStart = useMemo(() => {
-    return view === 'week' ? anchor.startOf('isoWeek') : anchor.startOf('month');
-  }, [view, anchor]);
+  // Modal: добавление смены на станок
+  const [addShiftOpen, setAddShiftOpen] = useState(false);
+  const [addShiftFor, setAddShiftFor] = useState<{ workstationId: string; date: string } | null>(null);
+  const [addShiftForm] = Form.useForm();
 
-  const rangeEnd = useMemo(() => {
-    return view === 'week' ? anchor.endOf('isoWeek') : anchor.endOf('month');
-  }, [view, anchor]);
-
-  const days = useMemo(() => {
-    const list: Dayjs[] = [];
-    let d = rangeStart;
-    while (d.isBefore(rangeEnd) || d.isSame(rangeEnd, 'day')) {
-      list.push(d);
-      d = d.add(1, 'day');
-    }
-    return list;
-  }, [rangeStart, rangeEnd]);
+  const dateStr = anchor.format('YYYY-MM-DD');
 
   const loadDictionaries = async () => {
     try {
@@ -90,15 +71,15 @@ const WorkCalendar = () => {
     }
   };
 
-  const loadAssignments = async () => {
+  const loadBoard = async () => {
+    setLoading(true);
     try {
-      const data = await shiftAssignmentsApi.listByRange(
-          rangeStart.format('YYYY-MM-DD'),
-          rangeEnd.format('YYYY-MM-DD'),
-      );
-      setAssignments(data ?? []);
+      const data = await workCalendarApi.getDayBoard(dateStr);
+      setBoard(data);
     } catch {
-      message.error('Ошибка загрузки назначений');
+      message.error('Ошибка загрузки календаря');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,391 +89,327 @@ const WorkCalendar = () => {
   }, []);
 
   useEffect(() => {
-    loadAssignments();
+    loadBoard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeStart.format('YYYY-MM-DD'), rangeEnd.format('YYYY-MM-DD')]);
+  }, [dateStr]);
 
   const filteredEmployees = departmentId
       ? employees.filter((e) => e.departmentId === departmentId)
       : employees;
 
-  const assignmentsByCell = useMemo(() => {
-    const map = new Map<string, ShiftAssignment[]>();
-    for (const a of assignments) {
-      const key = `${a.employeeId}|${a.date}`;
-      const list = map.get(key) ?? [];
-      list.push(a);
-      map.set(key, list);
-    }
-    return map;
-  }, [assignments]);
-
-  const handlePrev = () => {
-    setAnchor(view === 'week' ? anchor.subtract(1, 'week') : anchor.subtract(1, 'month'));
-  };
-  const handleNext = () => {
-    setAnchor(view === 'week' ? anchor.add(1, 'week') : anchor.add(1, 'month'));
-  };
-  const handleToday = () => setAnchor(dayjs());
-
   const handleDragStart = (e: DragStartEvent) => {
-    const data = e.active.data.current as any;
-    if (data?.type === 'pattern') setActivePattern(data.pattern);
+    const data = e.active.data.current as SlotDragData | undefined;
+    if (data?.type === 'employee') setActiveEmployee(data.employee);
   };
 
   const handleDragEnd = async (e: DragEndEvent) => {
-    setActivePattern(null);
-    const overData = e.over?.data.current as any;
-    const activeData = e.active.data.current as any;
-    if (!overData || overData.type !== 'cell') return;
+    setActiveEmployee(null);
+    const overData = e.over?.data.current as SlotDropData | undefined;
+    const activeData = e.active.data.current as SlotDragData | undefined;
+    if (!overData || overData.type !== 'slot' || !activeData || activeData.type !== 'employee') return;
 
-    const cell: CellKey = overData.cell;
+    const { slot, workstationId, shiftPatternId } = overData;
+    const employee = activeData.employee;
 
-    if (activeData?.type === 'pattern') {
-      const pattern: ShiftPattern = activeData.pattern;
-      const employee = employees.find((emp) => emp.id === cell.employeeId);
-      const ws = workstations.find((w) => w.departmentId === employee?.departmentId);
-      if (!ws) {
-        message.error('У выбранного сотрудника нет отдела со станциями');
-        return;
-      }
-      try {
-        await shiftAssignmentsApi.create({
-          date: cell.date,
-          employeeId: cell.employeeId,
-          workstationId: ws.id,
-          shiftPatternId: pattern.id,
-        });
-        message.success('Назначение создано');
-        loadAssignments();
-      } catch (err: any) {
-        const msg = err.response?.data?.message || 'Ошибка создания';
-        if (msg.includes('already has a shift')) {
-          Modal.confirm({
-            title: 'У сотрудника уже есть смена в этот день',
-            content: 'Создать вторую смену с override?',
-            okText: 'Да, override',
-            cancelText: 'Отмена',
-            onOk: async () => {
-              try {
-                await shiftAssignmentsApi.create({
-                  date: cell.date,
-                  employeeId: cell.employeeId,
-                  workstationId: ws.id,
-                  shiftPatternId: pattern.id,
-                  force: true,
-                  overrideReason: 'Назначено через drag-n-drop',
-                });
-                message.success('Создано с override');
-                loadAssignments();
-              } catch (e: any) {
-                message.error(e.response?.data?.message || 'Ошибка');
-              }
-            },
-          });
-        } else {
-          message.error(msg);
-        }
-      }
+    if (slot.employeeId) {
+      message.warning('В слоте уже есть сотрудник');
       return;
     }
 
-    if (activeData?.type === 'assignment') {
-      const a: ShiftAssignment = activeData.assignment;
-      if (a.date === cell.date && a.employeeId === cell.employeeId) return;
-      try {
-        await shiftAssignmentsApi.update(a.id, {
-          date: cell.date,
-          employeeId: cell.employeeId,
-          workstationId: a.workstationId,
-          shiftPatternId: a.shiftPatternId,
-        });
-        message.success('Перенесено');
-        loadAssignments();
-      } catch (err: any) {
-        message.error(err.response?.data?.message || 'Ошибка переноса');
-      }
-    }
-  };
-
-  const openCreateModal = (employeeId: string, date: string) => {
-    setEditing(null);
-    form.resetFields();
-    form.setFieldsValue({
-      employeeId,
-      date: dayjs(date),
-    });
-    setModalOpen(true);
-  };
-
-  const openEditModal = (a: ShiftAssignment) => {
-    setEditing(a);
-    form.setFieldsValue({
-      employeeId: a.employeeId,
-      date: dayjs(a.date),
-      workstationId: a.workstationId,
-      shiftPatternId: a.shiftPatternId,
-      actualHours: a.actualHours,
-      actualNightHours: a.actualNightHours,
-      comment: a.comment,
-    });
-    setModalOpen(true);
-  };
-
-  const handleSave = async () => {
     try {
-      const values = await form.validateFields();
-      setSaving(true);
-      const payload = {
-        date: values.date.format('YYYY-MM-DD'),
-        employeeId: values.employeeId,
-        workstationId: values.workstationId,
-        shiftPatternId: values.shiftPatternId,
-        actualHours: values.actualHours,
-        actualNightHours: values.actualNightHours,
-        comment: values.comment,
-      };
-      if (editing) {
-        await shiftAssignmentsApi.update(editing.id, payload);
-        message.success('Обновлено');
-      } else {
-        await shiftAssignmentsApi.create(payload);
-        message.success('Создано');
-      }
-      setModalOpen(false);
-      loadAssignments();
+      await workCalendarApi.assignEmployee(slot.id, { employeeId: employee.id });
+      message.success(`${employee.lastName} ${employee.firstName} назначен`);
+      loadBoard();
     } catch (err: any) {
-      if (err.errorFields) return;
-      message.error(err.response?.data?.message || 'Ошибка сохранения');
-    } finally {
-      setSaving(false);
+      const msg = err.response?.data?.message || 'Ошибка назначения';
+      if (msg.includes('already has a shift')) {
+        Modal.confirm({
+          title: 'У сотрудника уже есть смена в этот день',
+          content: 'Назначить вторую смену (override)?',
+          okText: 'Да, override',
+          cancelText: 'Отмена',
+          onOk: async () => {
+            try {
+              await workCalendarApi.assignEmployee(slot.id, {
+                employeeId: employee.id,
+                force: true,
+                overrideReason: 'Назначено через drag-n-drop',
+              });
+              message.success('Назначено с override');
+              loadBoard();
+            } catch (e: any) {
+              message.error(e.response?.data?.message || 'Ошибка');
+            }
+          },
+        });
+      } else {
+        message.error(msg);
+      }
+    }
+    void workstationId; void shiftPatternId;
+  };
+
+  const handleUnassign = async (slotId: string) => {
+    try {
+      await workCalendarApi.unassignEmployee(slotId);
+      message.success('Сотрудник снят');
+      loadBoard();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Ошибка');
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteSlot = async (slotId: string) => {
     try {
-      await shiftAssignmentsApi.delete(id);
-      message.success('Удалено');
-      loadAssignments();
+      await workCalendarApi.deleteSlot(slotId);
+      message.success('Слот удалён');
+      loadBoard();
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Ошибка удаления');
     }
   };
 
+  const handleToggleWorkstation = async (ws: WorkstationBoard) => {
+    try {
+      await workCalendarApi.setWorkstationDayStatus({
+        workstationId: ws.workstationId,
+        date: dateStr,
+        isWorking: !ws.isWorking,
+      });
+      loadBoard();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Ошибка');
+    }
+  };
+
+  const handleOpenAddShift = (workstationId: string) => {
+    setAddShiftFor({ workstationId, date: dateStr });
+    addShiftForm.resetFields();
+    setAddShiftOpen(true);
+  };
+
+  const handleSaveAddShift = async () => {
+    if (!addShiftFor) return;
+    try {
+      const values = await addShiftForm.validateFields();
+      await workCalendarApi.addWorkstationShift({
+        workstationId: addShiftFor.workstationId,
+        date: addShiftFor.date,
+        shiftPatternId: values.shiftPatternId,
+      });
+      setAddShiftOpen(false);
+      loadBoard();
+    } catch (err: any) {
+      if (err.errorFields) return;
+      message.error(err.response?.data?.message || 'Ошибка');
+    }
+  };
+
+  const handleDeleteWorkstationShift = async (id: string) => {
+    try {
+      await workCalendarApi.deleteWorkstationShift(id);
+      loadBoard();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Ошибка');
+    }
+  };
+
+  const handleAddSlot = async (workstationId: string, shiftPatternId: string) => {
+    try {
+      await workCalendarApi.createSlot({
+        date: dateStr,
+        workstationId,
+        shiftPatternId,
+      });
+      loadBoard();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Ошибка создания слота');
+    }
+  };
+
+  const handleOpenWsSettings = () => {
+    const initial: any = {};
+    for (const ws of workstations) {
+      initial[`ws_${ws.id}`] = board?.workstations.find((b) => b.workstationId === ws.id)?.isWorking ?? true;
+    }
+    wsSettingsForm.setFieldsValue(initial);
+    setWsSettingsOpen(true);
+  };
+
+  const handleSaveWsSettings = async () => {
+    try {
+      const values = await wsSettingsForm.getFieldsValue();
+      for (const ws of workstations) {
+        const key = `ws_${ws.id}`;
+        const isWorking = values[key];
+        const current = board?.workstations.find((b) => b.workstationId === ws.id);
+        const currentIsWorking = current?.isWorking ?? true;
+        if (isWorking !== currentIsWorking) {
+          await workCalendarApi.setWorkstationDayStatus({
+            workstationId: ws.id,
+            date: dateStr,
+            isWorking,
+          });
+        }
+      }
+      setWsSettingsOpen(false);
+      loadBoard();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Ошибка');
+    }
+  };
+
+  // Быстрый поиск занятых: список employeeId у кого уже есть смена в этот день
+  const busyEmployeeIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!board) return set;
+    for (const ws of board.workstations) {
+      for (const sh of ws.shifts) {
+        for (const s of sh.slots) {
+          if (s.employeeId) set.add(s.employeeId);
+        }
+      }
+    }
+    return set;
+  }, [board]);
+
   return (
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div>
-          <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }} wrap>
-            <Title level={3} style={{ color: 'white', margin: 0 }}>
-              Рабочий календарь
-            </Title>
-            <Space wrap>
-              <Select
-                  placeholder="Все отделы"
-                  allowClear
-                  style={{ width: 220 }}
-                  value={departmentId}
-                  onChange={setDepartmentId}
-                  options={departments.map((d) => ({ value: d.id, label: d.name }))}
-              />
-              <Select
-                  value={view}
-                  onChange={(v) => setView(v as ViewMode)}
-                  options={[
-                    { value: 'week', label: 'Неделя' },
-                    { value: 'month', label: 'Месяц' },
-                  ]}
-                  style={{ width: 120 }}
-              />
-              <Button icon={<LeftOutlined />} onClick={handlePrev} />
-              <DatePicker
-                  value={anchor}
-                  onChange={(v) => v && setAnchor(v)}
-                  format="DD.MM.YYYY"
-                  allowClear={false}
-              />
-              <Button icon={<RightOutlined />} onClick={handleNext} />
-              <Button onClick={handleToday}>Сегодня</Button>
-              <Button icon={<ReloadOutlined />} onClick={loadAssignments} />
+        <div style={{ display: 'flex', gap: 16 }}>
+          {/* Главная область */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }} wrap>
+              <Title level={3} style={{ color: 'white', margin: 0 }}>
+                Рабочий календарь
+              </Title>
+              <Space wrap>
+                <Select
+                    placeholder="Все отделы"
+                    allowClear
+                    style={{ width: 220 }}
+                    value={departmentId}
+                    onChange={setDepartmentId}
+                    options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                />
+                <Button icon={<LeftOutlined />} onClick={() => setAnchor(anchor.subtract(1, 'day'))} />
+                <DatePicker
+                    value={anchor}
+                    onChange={(v) => v && setAnchor(v)}
+                    format="DD.MM.YYYY"
+                    allowClear={false}
+                />
+                <Button icon={<RightOutlined />} onClick={() => setAnchor(anchor.add(1, 'day'))} />
+                <Button onClick={() => setAnchor(dayjs())}>Сегодня</Button>
+                <Button icon={<ReloadOutlined />} onClick={loadBoard} />
+                <Button icon={<SettingOutlined />} onClick={handleOpenWsSettings}>
+                  Настроить станки
+                </Button>
+              </Space>
             </Space>
-          </Space>
 
-          <Card
-              size="small"
-              style={{ background: '#2d2d3f', border: 'none', marginBottom: 12 }}
-              styles={{ body: { padding: 12 } }}
-          >
-            <Space wrap size="small">
-              <Text style={{ color: '#aaa' }}>Перетащи смену на ячейку:</Text>
-              {patterns.filter((p) => p.isActive).map((p) => (
-                  <DraggablePattern key={p.id} pattern={p} />
-              ))}
-              {patterns.length === 0 && (
-                  <Text type="secondary">Нет шаблонов смен. Создай в разделе «Шаблоны смен».</Text>
-              )}
-            </Space>
-          </Card>
+            <div style={{ color: '#aaa', marginBottom: 12 }}>
+              {anchor.format('dddd, DD MMMM YYYY')}
+            </div>
 
-          <div style={{ overflowX: 'auto', background: '#2d2d3f', borderRadius: 8 }}>
-            <table style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
-              <thead>
-              <tr>
-                <th
-                    style={{
-                      padding: 8,
-                      textAlign: 'left',
-                      color: '#aaa',
-                      position: 'sticky',
-                      left: 0,
-                      background: '#2d2d3f',
-                      borderBottom: '1px solid #3d3d4f',
-                      minWidth: 200,
-                    }}
-                >
-                  Сотрудник
-                </th>
-                {days.map((d) => {
-                  const isWeekend = d.day() === 0 || d.day() === 6;
-                  return (
-                      <th
-                          key={d.format('YYYY-MM-DD')}
-                          style={{
-                            padding: 8,
-                            textAlign: 'center',
-                            color: isWeekend ? '#ff7a45' : '#aaa',
-                            borderBottom: '1px solid #3d3d4f',
-                            minWidth: 100,
-                          }}
-                      >
-                        <div>{d.format('ddd')}</div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: 'white' }}>
-                          {d.format('DD')}
-                        </div>
-                      </th>
-                  );
-                })}
-              </tr>
-              </thead>
-              <tbody>
-              {filteredEmployees.length === 0 && (
-                  <tr>
-                    <td colSpan={days.length + 1} style={{ padding: 24, textAlign: 'center' }}>
-                      <Empty description="Нет сотрудников" />
-                    </td>
-                  </tr>
-              )}
-              {filteredEmployees.map((emp) => (
-                  <tr key={emp.id}>
-                    <td
-                        style={{
-                          padding: 8,
-                          color: 'white',
-                          position: 'sticky',
-                          left: 0,
-                          background: '#2d2d3f',
-                          borderBottom: '1px solid #3d3d4f',
-                        }}
-                    >
-                      <div style={{ fontWeight: 500 }}>
-                        {emp.lastName} {emp.firstName}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#888' }}>{emp.code}</div>
-                    </td>
-                    {days.map((d) => {
-                      const dateStr = d.format('YYYY-MM-DD');
-                      const cellAssignments = assignmentsByCell.get(`${emp.id}|${dateStr}`) ?? [];
-                      return (
-                          <DroppableCell
-                              key={dateStr}
-                              cell={{ employeeId: emp.id, date: dateStr }}
-                              onClick={() => openCreateModal(emp.id, dateStr)}
-                          >
-                            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                              {cellAssignments.map((a) => (
-                                  <DraggableAssignment
-                                      key={a.id}
-                                      assignment={a}
-                                      onEdit={() => openEditModal(a)}
-                                      onDelete={() => handleDelete(a.id)}
-                                  />
-                              ))}
-                            </Space>
-                          </DroppableCell>
-                      );
-                    })}
-                  </tr>
-              ))}
-              </tbody>
-            </table>
+            {loading && <Card style={{ background: '#2d2d3f', border: 'none' }}>Загрузка…</Card>}
+
+            {!loading && board && board.workstations.length === 0 && (
+                <Empty description="На этот день нет данных. Добавь станки к работе." />
+            )}
+
+            {!loading && board && board.workstations.map((ws) => (
+                <WorkstationCard
+                    key={ws.workstationId}
+                    ws={ws}
+                    workstations={workstations}
+                    patterns={patterns}
+                    onToggleWorking={() => handleToggleWorkstation(ws)}
+                    onAddShift={() => handleOpenAddShift(ws.workstationId)}
+                    onDeleteShift={handleDeleteWorkstationShift}
+                    onAddSlot={(shiftPatternId) => handleAddSlot(ws.workstationId, shiftPatternId)}
+                    onUnassign={handleUnassign}
+                    onDeleteSlot={handleDeleteSlot}
+                />
+            ))}
           </div>
 
-          <Modal
-              title={editing ? 'Редактирование назначения' : 'Новое назначение'}
-              open={modalOpen}
-              onOk={handleSave}
-              onCancel={() => setModalOpen(false)}
-              confirmLoading={saving}
-              okText="Сохранить"
-              cancelText="Отмена"
-              width={520}
-          >
-            <Form form={form} layout="vertical">
-              <Form.Item name="employeeId" label="Сотрудник" rules={[{ required: true }]}>
-                <Select
-                    showSearch
-                    optionFilterProp="label"
-                    options={employees.map((e) => ({
-                      value: e.id,
-                      label: `${e.lastName} ${e.firstName} (${e.code})`,
-                    }))}
-                />
-              </Form.Item>
-
-              <Form.Item name="date" label="Дата" rules={[{ required: true }]}>
-                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-              </Form.Item>
-
-              <Form.Item name="shiftPatternId" label="Шаблон смены" rules={[{ required: true }]}>
-                <Select
-                    options={patterns.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
-                />
-              </Form.Item>
-
-              <Form.Item name="workstationId" label="Рабочая станция" rules={[{ required: true }]}>
-                <Select
-                    showSearch
-                    optionFilterProp="label"
-                    options={workstations.map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` }))}
-                />
-              </Form.Item>
-
-              <Form.Item name="actualHours" label="Фактические часы (необязательно)">
-                <InputNumber min={0} max={24} step={0.5} style={{ width: '100%' }} />
-              </Form.Item>
-
-              <Form.Item name="actualNightHours" label="Фактические ночные (необязательно)">
-                <InputNumber min={0} max={24} step={0.5} style={{ width: '100%' }} />
-              </Form.Item>
-
-              <Form.Item name="comment" label="Комментарий">
-                <Input.TextArea rows={2} />
-              </Form.Item>
-            </Form>
-          </Modal>
+          {/* Панель сотрудников */}
+          <div style={{ width: 260, flexShrink: 0 }}>
+            <Card
+                title={<span style={{ color: 'white' }}>Сотрудники</span>}
+                style={{ background: '#2d2d3f', border: 'none', position: 'sticky', top: 0 }}
+                styles={{ header: { borderBottom: '1px solid #3d3d4f' } }}
+            >
+              <div style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+                {filteredEmployees.length === 0 && (
+                    <Text type="secondary">Нет сотрудников</Text>
+                )}
+                {filteredEmployees.map((emp) => {
+                  const busy = busyEmployeeIds.has(emp.id);
+                  return (
+                      <DraggableEmployeeCard key={emp.id} employee={emp} busy={busy} />
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
         </div>
 
+        {/* Modal: настройка станков */}
+        <Modal
+            title="Какие станки работают в этот день"
+            open={wsSettingsOpen}
+            onOk={handleSaveWsSettings}
+            onCancel={() => setWsSettingsOpen(false)}
+            okText="Сохранить"
+            cancelText="Отмена"
+            width={600}
+        >
+          <Form form={wsSettingsForm} layout="vertical">
+            {workstations.map((w) => (
+                <Form.Item key={w.id} name={`ws_${w.id}`} label={`${w.code} — ${w.name}`} valuePropName="checked">
+                  <Switch checkedChildren="Работает" unCheckedChildren="Простой" />
+                </Form.Item>
+            ))}
+          </Form>
+        </Modal>
+
+        {/* Modal: добавление смены на станок */}
+        <Modal
+            title="Добавить смену на станок"
+            open={addShiftOpen}
+            onOk={handleSaveAddShift}
+            onCancel={() => setAddShiftOpen(false)}
+            okText="Добавить"
+            cancelText="Отмена"
+            width={420}
+        >
+          <Form form={addShiftForm} layout="vertical">
+            <Form.Item
+                name="shiftPatternId"
+                label="Шаблон смены"
+                rules={[{ required: true, message: 'Выберите шаблон' }]}
+            >
+              <Select
+                  options={patterns
+                      .filter((p) => p.isActive)
+                      .map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+
         <DragOverlay>
-          {activePattern && (
+          {activeEmployee && (
               <div
                   style={{
                     padding: '6px 12px',
                     background: '#2ecc71',
                     color: 'white',
                     borderRadius: 4,
-                    cursor: 'grabbing',
                   }}
               >
-                {activePattern.name}
+                {activeEmployee.lastName} {activeEmployee.firstName}
               </div>
           )}
         </DragOverlay>
@@ -500,123 +417,237 @@ const WorkCalendar = () => {
   );
 };
 
-const DraggablePattern = ({ pattern }: { pattern: ShiftPattern }) => {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `pattern-${pattern.id}`,
-    data: { type: 'pattern', pattern },
+// --- Workstation card ---
+
+const WorkstationCard = ({
+                           ws, workstations, patterns,
+                           onToggleWorking, onAddShift, onDeleteShift, onAddSlot, onUnassign, onDeleteSlot,
+                         }: {
+  ws: WorkstationBoard;
+  workstations: Workstation[];
+  patterns: ShiftPattern[];
+  onToggleWorking: () => void;
+  onAddShift: () => void;
+  onDeleteShift: (id: string) => void;
+  onAddSlot: (shiftPatternId: string) => void;
+  onUnassign: (slotId: string) => void;
+  onDeleteSlot: (slotId: string) => void;
+}) => {
+  const w = workstations.find((x) => x.id === ws.workstationId);
+  const displayName = w ? `${w.code} — ${w.name}` : ws.workstationId;
+
+  return (
+      <Card
+          style={{
+            background: '#2d2d3f',
+            border: 'none',
+            marginBottom: 12,
+            opacity: ws.isWorking ? 1 : 0.5,
+          }}
+          styles={{ header: { borderBottom: '1px solid #3d3d4f' } }}
+          title={
+            <Space>
+              <span style={{ color: 'white', fontWeight: 500 }}>🏭 {displayName}</span>
+              {!ws.isWorking && <Tag color="red">Простой</Tag>}
+            </Space>
+          }
+          extra={
+            <Space>
+              <Tooltip title={ws.isWorking ? 'Поставить на простой' : 'Вернуть в работу'}>
+                <Button size="small" onClick={onToggleWorking}>
+                  {ws.isWorking ? '⏸' : '▶'}
+                </Button>
+              </Tooltip>
+              <Button size="small" icon={<PlusOutlined />} onClick={onAddShift}>
+                Смена
+              </Button>
+            </Space>
+          }
+      >
+        {ws.shifts.length === 0 && (
+            <Text type="secondary">Нет смен на этот день. Добавь через кнопку «+ Смена».</Text>
+        )}
+
+        {ws.shifts.map((sh) => (
+            <ShiftBlock
+                key={sh.workstationShiftId}
+                shift={sh}
+                patterns={patterns}
+                onDeleteShift={() => onDeleteShift(sh.workstationShiftId)}
+                onAddSlot={() => onAddSlot(sh.shiftPatternId)}
+                onUnassign={onUnassign}
+                onDeleteSlot={onDeleteSlot}
+            />
+        ))}
+      </Card>
+  );
+};
+
+// --- Shift block ---
+
+const ShiftBlock = ({
+                      shift, patterns, onDeleteShift, onAddSlot, onUnassign, onDeleteSlot,
+                    }: {
+  shift: ShiftBoard;
+  patterns: ShiftPattern[];
+  onDeleteShift: () => void;
+  onAddSlot: () => void;
+  onUnassign: (id: string) => void;
+  onDeleteSlot: (id: string) => void;
+}) => {
+  const p = patterns.find((x) => x.id === shift.shiftPatternId);
+  const timeRange = p ? `${p.startTime.slice(0, 5)}–${p.endTime.slice(0, 5)}` : '';
+
+  return (
+      <div style={{ marginBottom: 12 }}>
+        <Space style={{ marginBottom: 8 }} size="small" wrap>
+          <Tag color="blue">{shift.shiftPatternName ?? 'Смена'}</Tag>
+          {timeRange && <Text type="secondary" style={{ fontSize: 12 }}>{timeRange}</Text>}
+          {shift.totalHours != null && <Text type="secondary" style={{ fontSize: 12 }}>{shift.totalHours}ч</Text>}
+          {Number(shift.nightHours) > 0 && (
+              <Tag color="purple">ночь: {shift.nightHours}ч</Tag>
+          )}
+          <Button size="small" type="text" icon={<PlusOutlined />} onClick={onAddSlot} style={{ color: '#2ecc71' }}>
+            слот
+          </Button>
+          <Popconfirm title="Удалить смену?" onConfirm={onDeleteShift} okText="Да" cancelText="Нет">
+            <Button size="small" type="text" danger icon={<CloseOutlined />} />
+          </Popconfirm>
+        </Space>
+
+        <Space wrap size={8}>
+          {shift.slots.map((slot) => (
+              <SlotCell
+                  key={slot.id}
+                  slot={slot}
+                  onUnassign={() => onUnassign(slot.id)}
+                  onDelete={() => onDeleteSlot(slot.id)}
+              />
+          ))}
+          {shift.slots.length === 0 && (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Нет слотов. Нажми «+ слот».
+              </Text>
+          )}
+        </Space>
+      </div>
+  );
+};
+
+// --- Slot cell (droppable + draggable, если занят) ---
+
+const SlotCell = ({
+                    slot, onUnassign, onDelete,
+                  }: {
+  slot: ShiftSlot;
+  onUnassign: () => void;
+  onDelete: () => void;
+}) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `slot-${slot.id}`,
+    data: {
+      type: 'slot',
+      slot,
+      workstationId: slot.workstationId,
+      shiftPatternId: slot.shiftPatternId,
+    } as SlotDropData,
   });
+
+  const filled = !!slot.employeeId;
+
+  return (
+      <div
+          ref={setNodeRef}
+          style={{
+            minWidth: 140,
+            padding: '6px 8px',
+            borderRadius: 4,
+            background: filled ? '#3d5a80' : (isOver ? '#2ecc71' : '#1e1e2f'),
+            border: `1px dashed ${filled ? '#3d5a80' : '#3d3d4f'}`,
+            color: 'white',
+            fontSize: 12,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 6,
+          }}
+      >
+        {filled ? (
+            <>
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {slot.employeeFullName ?? slot.employeeId}
+            {slot.overridden && (
+                <Tag color="orange" style={{ marginLeft: 6 }}>override</Tag>
+            )}
+          </span>
+              <Space size={2}>
+                <Tooltip title="Снять сотрудника">
+                  <Button
+                      size="small" type="text" style={{ color: 'white', padding: 0, height: 16 }}
+                      onClick={(e) => { e.stopPropagation(); onUnassign(); }}
+                  >
+                    ↩
+                  </Button>
+                </Tooltip>
+                <Popconfirm title="Удалить слот?" onConfirm={onDelete} okText="Да" cancelText="Нет">
+                  <Button
+                      size="small" type="text" style={{ color: '#ff7875', padding: 0, height: 16 }}
+                      onClick={(e) => e.stopPropagation()}
+                  >
+                    ×
+                  </Button>
+                </Popconfirm>
+              </Space>
+            </>
+        ) : (
+            <>
+              <UserAddOutlined style={{ color: '#888' }} />
+              <span style={{ flex: 1, color: '#888' }}>Свободен</span>
+              <Popconfirm title="Удалить слот?" onConfirm={onDelete} okText="Да" cancelText="Нет">
+                <Button
+                    size="small" type="text" style={{ color: '#ff7875', padding: 0, height: 16 }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                  ×
+                </Button>
+              </Popconfirm>
+            </>
+        )}
+      </div>
+  );
+};
+
+// --- Draggable employee card ---
+
+const DraggableEmployeeCard = ({ employee, busy }: { employee: Employee; busy: boolean }) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `employee-${employee.id}`,
+    data: { type: 'employee', employee } as SlotDragData,
+  });
+
   return (
       <div
           ref={setNodeRef}
           {...listeners}
           {...attributes}
           style={{
-            padding: '4px 10px',
-            background: isDragging ? '#1d8a4b' : '#2ecc71',
-            color: 'white',
+            padding: '6px 10px',
+            marginBottom: 6,
             borderRadius: 4,
-            cursor: 'grab',
+            background: isDragging ? '#1d8a4b' : (busy ? '#3d3d4f' : '#1e1e2f'),
+            color: busy ? '#888' : 'white',
             fontSize: 13,
-            userSelect: 'none',
-          }}
-      >
-        {pattern.name}
-        {Number(pattern.nightHours) > 0 && (
-            <Tag color="purple" style={{ marginLeft: 6 }}>
-              {pattern.nightHours}ч ночь
-            </Tag>
-        )}
-      </div>
-  );
-};
-
-const DraggableAssignment = ({
-                               assignment, onEdit, onDelete,
-                             }: {
-  assignment: ShiftAssignment;
-  onEdit: () => void;
-  onDelete: () => void;
-}) => {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `assign-${assignment.id}`,
-    data: { type: 'assignment', assignment },
-  });
-  return (
-      <div
-          ref={setNodeRef}
-          style={{
-            padding: '4px 6px',
-            background: isDragging ? '#1d8a4b' : '#3d5a80',
-            color: 'white',
-            borderRadius: 4,
-            fontSize: 12,
             cursor: 'grab',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}
       >
-      <span
-          {...listeners}
-          {...attributes}
-          style={{ flex: 1, cursor: 'grab' }}
-          title={`${assignment.shiftPatternName ?? ''} • ${assignment.workstationName ?? ''}`}
-      >
-        {assignment.shiftPatternName ?? '—'}
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {employee.lastName} {employee.firstName}
       </span>
-        <Space size={2}>
-          <Button
-              size="small"
-              type="text"
-              style={{ color: 'white', padding: 0, height: 16 }}
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          >
-            ✎
-          </Button>
-          <Popconfirm title="Удалить?" onConfirm={onDelete} okText="Да" cancelText="Нет">
-            <Button
-                size="small"
-                type="text"
-                style={{ color: '#ff7875', padding: 0, height: 16 }}
-                onClick={(e) => e.stopPropagation()}
-            >
-              ×
-            </Button>
-          </Popconfirm>
-        </Space>
+        {busy && <Badge status="processing" text={<span style={{ color: '#888', fontSize: 11 }}>занят</span>} />}
       </div>
-  );
-};
-
-const DroppableCell = ({
-                         cell, children, onClick,
-                       }: {
-  cell: { employeeId: string; date: string };
-  children: ReactNode;
-  onClick: () => void;
-}) => {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `cell-${cell.employeeId}-${cell.date}`,
-    data: { type: 'cell', cell },
-  });
-  return (
-      <td
-          ref={setNodeRef}
-          onClick={onClick}
-          style={{
-            padding: 4,
-            verticalAlign: 'top',
-            minWidth: 100,
-            minHeight: 60,
-            borderBottom: '1px solid #3d3d4f',
-            borderLeft: '1px solid #3d3d4f',
-            background: isOver ? '#3d5a80' : 'transparent',
-            cursor: 'pointer',
-            transition: 'background 0.15s',
-          }}
-      >
-        {children}
-      </td>
   );
 };
 

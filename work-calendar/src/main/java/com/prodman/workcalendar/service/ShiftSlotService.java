@@ -119,6 +119,7 @@ public class ShiftSlotService {
         if (req.getActualNightHours() != null) slot.setActualNightHours(req.getActualNightHours());
         if (req.getCoefficientOverride() != null) slot.setCoefficientOverride(req.getCoefficientOverride());
         if (req.getComment() != null) slot.setComment(req.getComment());
+        if (req.getIsDayOffWork() != null) slot.setIsDayOffWork(req.getIsDayOffWork());
         return toResponse(repository.save(slot));
     }
 
@@ -158,6 +159,7 @@ public class ShiftSlotService {
                 .comment(s.getComment())
                 .overridden(s.getOverridden())
                 .overrideReason(s.getOverrideReason())
+                .isDayOffWork(s.getIsDayOffWork())
                 .createdBy(s.getCreatedBy())
                 .updatedBy(s.getUpdatedBy())
                 .createdAt(s.getCreatedAt())

@@ -34,11 +34,12 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlot, UUID> {
     List<ShiftSlot> findAllByTenantIdAndEmployeeIdAndDateBetween(
             UUID tenantId, UUID employeeId, LocalDate from, LocalDate to);
 
-    /** Агрегат по сотрудникам за период. */
+    /** Агрегат по сотрудникам за период (с часами в выходной). */
     @Query("""
         select s.employeeId, s.employeeFullName, s.employeeDepartmentId,
                coalesce(sum(coalesce(s.actualHours, s.plannedHours)), 0),
                coalesce(sum(coalesce(s.actualNightHours, s.plannedNightHours)), 0),
+               coalesce(sum(case when s.isDayOffWork = true then coalesce(s.actualHours, s.plannedHours) else 0 end), 0),
                count(s)
         from ShiftSlot s
         where s.tenantId = :tenantId

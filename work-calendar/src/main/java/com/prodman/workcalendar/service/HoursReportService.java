@@ -29,7 +29,8 @@ public class HoursReportService {
                         .employeeDepartmentId((UUID) r[2])
                         .totalHours((BigDecimal) r[3])
                         .nightHours((BigDecimal) r[4])
-                        .assignmentsCount(((Number) r[5]).longValue())
+                        .dayOffHours((BigDecimal) r[5])
+                        .assignmentsCount(((Number) r[6]).longValue())
                         .build())
                 .toList();
     }

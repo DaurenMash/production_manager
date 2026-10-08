@@ -120,6 +120,7 @@ public class DayBoardService {
                 .comment(s.getComment())
                 .overridden(s.getOverridden())
                 .overrideReason(s.getOverrideReason())
+                .isDayOffWork(s.getIsDayOffWork())
                 .createdBy(s.getCreatedBy())
                 .updatedBy(s.getUpdatedBy())
                 .createdAt(s.getCreatedAt())

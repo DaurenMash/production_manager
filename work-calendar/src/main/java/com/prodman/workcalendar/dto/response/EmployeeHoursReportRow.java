@@ -18,5 +18,7 @@ public class EmployeeHoursReportRow {
     private UUID employeeDepartmentId;
     private BigDecimal totalHours;
     private BigDecimal nightHours;
+    /** Часы, отработанные в выходной (по флагу is_day_off_work). */
+    private BigDecimal dayOffHours;
     private long assignmentsCount;
 }

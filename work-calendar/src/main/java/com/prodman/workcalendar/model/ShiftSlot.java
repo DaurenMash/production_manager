@@ -85,6 +85,11 @@ public class ShiftSlot {
     @Column(name = "override_reason")
     private String overrideReason;
 
+    /** TRUE — сотрудник работал в свой выходной. Устанавливается вручную. */
+    @Column(name = "is_day_off_work", nullable = false)
+    @Builder.Default
+    private Boolean isDayOffWork = false;
+
     @Column(name = "created_by")
     private UUID createdBy;
 
@@ -105,6 +110,7 @@ public class ShiftSlot {
         if (plannedNightHours == null) plannedNightHours = BigDecimal.ZERO;
         if (overridden == null) overridden = false;
         if (status == null) status = ShiftSlotStatus.OPEN;
+        if (isDayOffWork == null) isDayOffWork = false;
     }
 
     @PreUpdate

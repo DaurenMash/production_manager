@@ -27,4 +27,7 @@ public class UpdateShiftSlotRequest {
     private BigDecimal coefficientOverride;
 
     private String comment;
+
+    /** TRUE — сотрудник работал в свой выходной. */
+    private Boolean isDayOffWork;
 }
