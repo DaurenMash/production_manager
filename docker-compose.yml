@@ -137,7 +137,7 @@ services:
     container_name: prodman-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT:-7379}:6379"
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
@@ -189,7 +189,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${USER_POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${USER_POSTGRES_PASSWORD:-password}
       SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_REDIS_PORT: ${REDIS_PORT:-7379}
       SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
@@ -224,7 +224,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${WORK_POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${WORK_POSTGRES_PASSWORD:-password}
       SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_REDIS_PORT: ${REDIS_PORT:-7379}
       SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       EMPLOYEE_SERVICE_URL: http://employee-service-app:8084
     healthcheck:
@@ -341,7 +341,7 @@ services:
       EMPLOYEE_SERVICE_URL: http://employee-service-app:8084
       TEST_SERVICE_URL: http://test-service-app:8085
       SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_REDIS_PORT: ${REDIS_PORT:-7379}
       SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       SPRING_DATA_MONGODB_HOST: mongodb
       SPRING_DATA_MONGODB_PORT: 27017

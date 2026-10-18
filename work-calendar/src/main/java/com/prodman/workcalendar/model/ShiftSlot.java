@@ -85,6 +85,13 @@ public class ShiftSlot {
     @Column(name = "override_reason")
     private String overrideReason;
 
+    @Column(name = "qualification_overridden", nullable = false)
+    @Builder.Default
+    private Boolean qualificationOverridden = false;
+
+    @Column(name = "qualification_override_reason")
+    private String qualificationOverrideReason;
+
     /** TRUE — сотрудник работал в свой выходной. Устанавливается вручную. */
     @Column(name = "is_day_off_work", nullable = false)
     @Builder.Default
@@ -111,6 +118,7 @@ public class ShiftSlot {
         if (overridden == null) overridden = false;
         if (status == null) status = ShiftSlotStatus.OPEN;
         if (isDayOffWork == null) isDayOffWork = false;
+        if (qualificationOverridden == null) qualificationOverridden = false;
     }
 
     @PreUpdate

@@ -15,6 +15,7 @@ import {
   SafetyCertificateOutlined,
   BookOutlined,
   ClockCircleOutlined,
+  BarChartOutlined,
   IdcardOutlined,
   ApartmentOutlined,
 } from '@ant-design/icons';
@@ -35,6 +36,7 @@ const MainLayout = () => {
     { key: '/tests', icon: <ExperimentOutlined />, label: 'Тестирование' },
     { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },
     { key: '/shift-patterns', icon: <ClockCircleOutlined />, label: 'Шаблоны смен' },
+    { key: '/reports', icon: <BarChartOutlined />, label: 'Отчёты' },
     { key: '/workstations', icon: <SettingOutlined />, label: 'Рабочие места' },
     {
       key: 'dictionaries',

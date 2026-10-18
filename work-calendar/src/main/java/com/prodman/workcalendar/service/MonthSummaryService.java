@@ -4,8 +4,10 @@ import com.prodman.workcalendar.dto.response.MonthSummaryResponse;
 import com.prodman.workcalendar.model.ShiftSlot;
 import com.prodman.workcalendar.model.ShiftSlotStatus;
 import com.prodman.workcalendar.model.WorkstationDayStatus;
+import com.prodman.workcalendar.repository.EmployeeQualificationRefRepository;
 import com.prodman.workcalendar.repository.ShiftSlotRepository;
 import com.prodman.workcalendar.repository.WorkstationDayStatusRepository;
+import com.prodman.workcalendar.repository.WorkstationRefRepository;
 import com.prodman.workcalendar.repository.WorkstationShiftRepository;
 import com.prodman.workcalendar.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,8 @@ public class MonthSummaryService {
     private final WorkstationDayStatusRepository dayStatusRepository;
     private final WorkstationShiftRepository workstationShiftRepository;
     private final ShiftSlotRepository shiftSlotRepository;
+    private final WorkstationRefRepository workstationRefRepository;
+    private final EmployeeQualificationRefRepository employeeQualificationRefRepository;
 
     @Transactional(readOnly = true)
     public MonthSummaryResponse getSummary(LocalDate from, LocalDate to) {
@@ -107,15 +111,20 @@ public class MonthSummaryService {
             // Список работающих станков (id + имя станка, если есть слоты)
             List<MonthSummaryResponse.DaySummary.WorkstationRef> wsRefs = workingIds.stream()
                     .map(id -> {
-                        ShiftSlot anySlot = slots.stream()
-                                .filter(s -> s.getDate().equals(dd) && s.getWorkstationId().equals(id))
-                                .findFirst().orElse(null);
+                        var ref = workstationRefRepository.findByIdAndTenantId(id, tenantId).orElse(null);
                         return MonthSummaryResponse.DaySummary.WorkstationRef.builder()
                                 .id(id)
-                                .name(anySlot == null ? null : anySlot.getWorkstationName())
+                                .code(ref == null ? null : ref.getCode())
+                                .name(ref == null ? null : ref.getName())
                                 .build();
                     })
                     .collect(Collectors.toList());
+
+            // Слоты этого дня (для проверки mismatch)
+            List<ShiftSlot> slotsThisDay = slots.stream()
+                    .filter(s -> s.getDate().equals(dd))
+                    .toList();
+            boolean hasMismatch = dayHasQualificationMismatch(slotsThisDay, tenantId);
 
             days.add(MonthSummaryResponse.DaySummary.builder()
                     .date(dd)
@@ -125,6 +134,7 @@ public class MonthSummaryService {
                     .filledSlots(filledSlots)
                     .openSlots(Math.max(0, totalSlots - filledSlots))
                     .workstations(wsRefs)
+                    .hasQualificationMismatch(hasMismatch)
                     .build());
 
             d = d.plusDays(1);
@@ -136,4 +146,24 @@ public class MonthSummaryService {
                 .days(days)
                 .build();
     }
+
+    /**
+     * Есть ли в этот день хоть один слот с mismatch квалификации:
+     * у слота задано требование, есть назначенный сотрудник,
+     * и у сотрудника НЕТ этой квалификации в ref-кэше.
+     */
+    private boolean dayHasQualificationMismatch(List<ShiftSlot> slotsForDay, UUID tenantId) {
+        for (ShiftSlot s : slotsForDay) {
+            if (s.getRequiredQualificationId() == null) continue;
+            if (s.getEmployeeId() == null) continue;
+            boolean has = employeeQualificationRefRepository
+                    .findAllByTenantIdAndEmployeeId(tenantId, s.getEmployeeId())
+                    .stream()
+                    .anyMatch(q -> q.getQualificationId().equals(s.getRequiredQualificationId()));
+            if (!has) return true;
+        }
+        return false;
+    }
+
+
 }

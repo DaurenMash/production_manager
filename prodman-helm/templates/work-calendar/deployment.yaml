@@ -40,7 +40,7 @@ spec:
             - name: REDIS_HOST
               value: "redis"
             - name: REDIS_PORT
-              value: "6379"
+              value: "7379"
             - name: EMPLOYEE_SERVICE_URL
               value: "http://employee-service-app:8084"
           resources:

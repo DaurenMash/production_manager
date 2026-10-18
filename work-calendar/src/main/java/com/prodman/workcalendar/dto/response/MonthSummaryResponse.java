@@ -36,6 +36,8 @@ public class MonthSummaryResponse {
         /** Список названий работающих станков (для UI, если их ≤10). */
         private List<WorkstationRef> workstations;
 
+        private Boolean hasQualificationMismatch;
+
         @Data
         @Builder
         @NoArgsConstructor

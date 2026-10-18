@@ -4,7 +4,9 @@ import com.prodman.workcalendar.dto.request.AssignEmployeeToSlotRequest;
 import com.prodman.workcalendar.dto.request.CreateShiftSlotRequest;
 import com.prodman.workcalendar.dto.request.UpdateShiftSlotRequest;
 import com.prodman.workcalendar.dto.response.ShiftSlotResponse;
+import com.prodman.workcalendar.service.RefSyncService;
 import com.prodman.workcalendar.service.ShiftSlotService;
+import com.prodman.workcalendar.tenant.TenantContext;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class ShiftSlotController {
 
     private final ShiftSlotService service;
+    private final RefSyncService refSyncService;
 
     @GetMapping
     public ResponseEntity<List<ShiftSlotResponse>> list(
@@ -66,5 +69,16 @@ public class ShiftSlotController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Кнопка «Обновить квалификации».
+     * Параллельно тянет квалификации всех сотрудников тенанта из employee-service
+     * и пишет их в локальный ref через идемпотентный upsert.
+     */
+    @PostMapping("/refresh-qualifications")
+    public ResponseEntity<RefSyncService.SyncResult> refreshQualifications() {
+        UUID tenantId = TenantContext.require();
+        return ResponseEntity.ok(refSyncService.refreshQualifications(tenantId));
     }
 }

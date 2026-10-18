@@ -19,8 +19,8 @@ public class CreateWorkstationRequest {
     @NotNull
     private UUID departmentId;
 
-    /** Обязательная квалификация. Может быть NULL, если станок не требует квалификации. */
-    private UUID requiredQualificationId;
+//    /** Обязательная квалификация. Может быть NULL, если станок не требует квалификации. */
+//    private UUID requiredQualificationId;
 
     @NotBlank
     @Size(max = 64)

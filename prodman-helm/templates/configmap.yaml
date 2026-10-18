@@ -8,4 +8,4 @@ data:
   DB_NAME: {{ .Values.postgresql.database | quote }}
   DB_USER: {{ .Values.postgresql.username | quote }}
   REDIS_HOST: "redis"
-  REDIS_PORT: "6379"
+  REDIS_PORT: "7379"

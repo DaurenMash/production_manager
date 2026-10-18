@@ -20,6 +20,12 @@ public class AssignEmployeeToSlotRequest {
 
     private Boolean force;
 
+    /** Если true — назначить, несмотря на отсутствие требуемой квалификации. */
+    private Boolean forceQualificationOverride;
+
+    /** Причина override (обязательна при forceQualificationOverride=true). */
+    private String qualificationOverrideReason;
+
     @Size(max = 2000)
     private String overrideReason;
 

@@ -43,6 +43,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(errorBody("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR));
     }
+    @ExceptionHandler(QualificationMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleQualificationMismatch(
+            QualificationMismatchException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "QUALIFICATION_MISMATCH");
+        body.put("message", "У сотрудника нет требуемой квалификации для этого слота");
+        body.put("requiredQualificationId", ex.getRequiredQualificationId());
+        return ResponseEntity.status(409).body(body);
+    }
 
     private Map<String, Object> errorBody(String message, HttpStatus status) {
         Map<String, Object> body = new HashMap<>();

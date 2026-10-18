@@ -6,6 +6,7 @@ import com.prodman.workcalendar.model.ShiftPattern;
 import com.prodman.workcalendar.model.ShiftSlot;
 import com.prodman.workcalendar.model.WorkstationDayStatus;
 import com.prodman.workcalendar.model.WorkstationShift;
+import com.prodman.workcalendar.repository.EmployeeQualificationRefRepository;
 import com.prodman.workcalendar.repository.ShiftPatternRepository;
 import com.prodman.workcalendar.repository.ShiftSlotRepository;
 import com.prodman.workcalendar.repository.WorkstationDayStatusRepository;
@@ -27,34 +28,29 @@ public class DayBoardService {
     private final WorkstationShiftRepository workstationShiftRepository;
     private final ShiftSlotRepository shiftSlotRepository;
     private final ShiftPatternRepository shiftPatternRepository;
+    private final EmployeeQualificationRefRepository employeeQualificationRefRepository;
 
     @Transactional(readOnly = true)
     public DayBoardResponse getBoard(LocalDate date) {
         UUID tenantId = TenantContext.require();
 
-        // Статусы станков на дату (override)
         Map<UUID, WorkstationDayStatus> statusByWs = dayStatusRepository
                 .findAllByTenantIdAndDate(tenantId, date).stream()
                 .collect(Collectors.toMap(WorkstationDayStatus::getWorkstationId, s -> s));
 
-        // Смены станков на дату
         List<WorkstationShift> shifts = workstationShiftRepository
                 .findAllByTenantIdAndDate(tenantId, date);
 
-        // Слоты на дату
         List<ShiftSlot> slots = shiftSlotRepository
                 .findAllByTenantIdAndDate(tenantId, date);
 
-        // Группируем слоты по workstation_id + shift_pattern_id
         Map<String, List<ShiftSlot>> slotsByWsAndPattern = slots.stream()
                 .collect(Collectors.groupingBy(
                         s -> s.getWorkstationId() + "|" + s.getShiftPatternId()));
 
-        // Группируем смены станков по workstation_id
         Map<UUID, List<WorkstationShift>> shiftsByWs = shifts.stream()
                 .collect(Collectors.groupingBy(WorkstationShift::getWorkstationId));
 
-        // Собираем все workstation_id, для которых есть либо статус, либо смены, либо слоты
         Set<UUID> wsIds = new TreeSet<>();
         wsIds.addAll(statusByWs.keySet());
         wsIds.addAll(shiftsByWs.keySet());
@@ -82,7 +78,7 @@ public class DayBoardService {
                         .shiftPatternName(patternName)
                         .totalHours(pattern == null ? null : pattern.getTotalHours())
                         .nightHours(pattern == null ? null : pattern.getNightHours())
-                        .slots(cellSlots.stream().map(this::toSlotResponse).toList())
+                        .slots(cellSlots.stream().map(s -> toSlotResponse(s, tenantId)).toList())
                         .build());
             }
 
@@ -99,7 +95,7 @@ public class DayBoardService {
                 .build();
     }
 
-    private ShiftSlotResponse toSlotResponse(ShiftSlot s) {
+    private ShiftSlotResponse toSlotResponse(ShiftSlot s, UUID tenantId) {
         return ShiftSlotResponse.builder()
                 .id(s.getId())
                 .date(s.getDate())
@@ -120,11 +116,23 @@ public class DayBoardService {
                 .comment(s.getComment())
                 .overridden(s.getOverridden())
                 .overrideReason(s.getOverrideReason())
+                .qualificationOverridden(s.getQualificationOverridden())
+                .qualificationOverrideReason(s.getQualificationOverrideReason())
+                .qualificationMismatch(hasQualificationMismatch(s, tenantId))
                 .isDayOffWork(s.getIsDayOffWork())
                 .createdBy(s.getCreatedBy())
                 .updatedBy(s.getUpdatedBy())
                 .createdAt(s.getCreatedAt())
                 .updatedAt(s.getUpdatedAt())
                 .build();
+    }
+
+    private boolean hasQualificationMismatch(ShiftSlot s, UUID tenantId) {
+        if (s.getRequiredQualificationId() == null) return false;
+        if (s.getEmployeeId() == null) return false;
+        return employeeQualificationRefRepository
+                .findAllByTenantIdAndEmployeeId(tenantId, s.getEmployeeId())
+                .stream()
+                .noneMatch(q -> q.getQualificationId().equals(s.getRequiredQualificationId()));
     }
 }

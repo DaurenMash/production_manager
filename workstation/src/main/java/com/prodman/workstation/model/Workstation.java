@@ -30,9 +30,9 @@ public class Workstation {
     @Column(name = "department_id", nullable = false)
     private UUID departmentId;
 
-    /** Требуемая квалификация для работы на станции. Ссылка на employee-service.qualifications (логическая). Может быть NULL. */
-    @Column(name = "required_qualification_id")
-    private UUID requiredQualificationId;
+//    /** Требуемая квалификация для работы на станции. Ссылка на employee-service.qualifications (логическая). Может быть NULL. */
+//    @Column(name = "required_qualification_id")
+//    private UUID requiredQualificationId;
 
     @Column(name = "code", nullable = false)
     @ToString.Include

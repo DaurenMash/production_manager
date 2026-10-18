@@ -22,6 +22,10 @@ export interface ShiftSlot {
     comment: string | null;
     overridden: boolean;
     overrideReason: string | null;
+    qualificationOverridden: boolean;
+    qualificationMismatch: boolean;
+    qualificationOverrideReason: string | null;
+    isDayOffWork: boolean;
     createdBy: string | null;
     updatedBy: string | null;
     createdAt: string;
@@ -83,6 +87,8 @@ export interface AssignEmployeeToSlotRequest {
     force?: boolean;
     overrideReason?: string;
     comment?: string;
+    forceQualificationOverride?: boolean;
+    qualificationOverrideReason?: string;
 }
 
 export interface UpdateShiftSlotRequest {
@@ -91,6 +97,7 @@ export interface UpdateShiftSlotRequest {
     actualNightHours?: number;
     coefficientOverride?: number;
     comment?: string;
+    isDayOffWork?: boolean;
 }
 
 export interface SetWorkstationDayStatusRequest {
@@ -106,12 +113,34 @@ export interface AddWorkstationShiftRequest {
     shiftPatternId: string;
 }
 
+// ---- Month summary ----
+
+export interface DaySummary {
+    date: string;
+    totalWorkstations: number;
+    workingWorkstations: number;
+    hasQualificationMismatch: boolean;
+    totalSlots: number;
+    filledSlots: number;
+    openSlots: number;
+    workstations: { id: string; code: string | null; name: string | null }[];
+}
+
+export interface MonthSummary {
+    from: string;
+    to: string;
+    days: DaySummary[];
+}
+
+// ---- Reports ----
+
 export interface EmployeeHoursReportRow {
     employeeId: string;
     employeeFullName: string | null;
     employeeDepartmentId: string | null;
     totalHours: number;
     nightHours: number;
+    dayOffHours: number;
     assignmentsCount: number;
 }
 
@@ -122,14 +151,35 @@ export interface DepartmentHoursReportRow {
     assignmentsCount: number;
 }
 
+export interface EquipmentReportRow {
+    workstationId: string;
+    workstationCode: string | null;
+    workstationName: string | null;
+    workingDays: number;
+    shiftsPlanned: number;
+    totalSlots: number;
+    filledSlots: number;
+    openSlots: number;
+    utilization: number;
+}
+
+// ---- Qualifications refresh ----
+
+export interface QualificationRefreshResult {
+    employeesOk: number;
+    employeesFailed: number;
+    qualificationsSynced: number;
+}
+
 export const workCalendarApi = {
-    // Day board — агрегат «день → станки → смены → слоты»
     getDayBoard: (date: string): Promise<DayBoard> =>
+        apiClient.get('/work-calendar/api/day-board', { params: { date } }).then((res) => res.data),
+
+    getMonthSummary: (from: string, to: string): Promise<MonthSummary> =>
         apiClient
-            .get('/work-calendar/api/day-board', { params: { date } })
+            .get('/work-calendar/api/day-board/month-summary', { params: { from, to } })
             .then((res) => res.data),
 
-    // Workstation day status
     setWorkstationDayStatus: (data: SetWorkstationDayStatusRequest): Promise<WorkstationDayStatus> =>
         apiClient
             .post('/work-calendar/api/workstation-day-status', data)
@@ -140,7 +190,6 @@ export const workCalendarApi = {
             .delete(`/work-calendar/api/workstation-day-status/${id}`)
             .then(() => undefined),
 
-    // Workstation shifts — какие смены выбраны для станка в день
     addWorkstationShift: (data: AddWorkstationShiftRequest): Promise<WorkstationShift> =>
         apiClient
             .post('/work-calendar/api/workstation-shifts', data)
@@ -151,21 +200,16 @@ export const workCalendarApi = {
             .delete(`/work-calendar/api/workstation-shifts/${id}`)
             .then(() => undefined),
 
-    // Shift slots
     listSlots: (date: string): Promise<ShiftSlot[]> =>
         apiClient
             .get('/work-calendar/api/shift-slots', { params: { date } })
             .then((res) => res.data),
 
     createSlot: (data: CreateShiftSlotRequest): Promise<ShiftSlot> =>
-        apiClient
-            .post('/work-calendar/api/shift-slots', data)
-            .then((res) => res.data),
+        apiClient.post('/work-calendar/api/shift-slots', data).then((res) => res.data),
 
     updateSlot: (id: string, data: UpdateShiftSlotRequest): Promise<ShiftSlot> =>
-        apiClient
-            .put(`/work-calendar/api/shift-slots/${id}`, data)
-            .then((res) => res.data),
+        apiClient.put(`/work-calendar/api/shift-slots/${id}`, data).then((res) => res.data),
 
     assignEmployee: (slotId: string, data: AssignEmployeeToSlotRequest): Promise<ShiftSlot> =>
         apiClient
@@ -182,7 +226,6 @@ export const workCalendarApi = {
             .delete(`/work-calendar/api/shift-slots/${id}`)
             .then(() => undefined),
 
-    // Reports
     reportByEmployee: (from: string, to: string): Promise<EmployeeHoursReportRow[]> =>
         apiClient
             .get('/work-calendar/api/reports/hours/by-employee', { params: { from, to } })
@@ -191,5 +234,20 @@ export const workCalendarApi = {
     reportByDepartment: (from: string, to: string): Promise<DepartmentHoursReportRow[]> =>
         apiClient
             .get('/work-calendar/api/reports/hours/by-department', { params: { from, to } })
+            .then((res) => res.data),
+
+    reportEquipment: (from: string, to: string): Promise<EquipmentReportRow[]> =>
+        apiClient
+            .get('/work-calendar/api/reports/equipment', { params: { from, to } })
+            .then((res) => res.data),
+
+    /**
+     * Ручной синк квалификаций всех сотрудников тенанта.
+     * Бэкенд параллельно тянет данные из employee-service и пишет в локальный ref.
+     * Возвращает статистику по синку.
+     */
+    refreshQualifications: (): Promise<QualificationRefreshResult> =>
+        apiClient
+            .post('/work-calendar/api/shift-slots/refresh-qualifications')
             .then((res) => res.data),
 };

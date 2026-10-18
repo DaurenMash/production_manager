@@ -90,3 +90,10 @@ docs/conventions-large-prompts.md
 # === Maven archetype leftovers ===
 **/src/main/resources/archetype-resources/
 **/src/main/resources/META-INF/maven/archetype.xml
+
+# === Local dev / temp prompts (не коммитим) ===
+_tmp_prompt_*.txt
+pro.bat
+run_calendar.bat
+seed_demo.bat
+seed_demo.ps1

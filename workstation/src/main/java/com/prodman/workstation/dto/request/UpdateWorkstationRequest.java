@@ -19,7 +19,7 @@ public class UpdateWorkstationRequest {
     @NotNull
     private UUID departmentId;
 
-    private UUID requiredQualificationId;
+//    private UUID requiredQualificationId;
 
     @NotBlank
     @Size(max = 64)

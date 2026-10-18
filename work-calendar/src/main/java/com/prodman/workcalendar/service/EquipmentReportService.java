@@ -6,6 +6,7 @@ import com.prodman.workcalendar.model.ShiftSlotStatus;
 import com.prodman.workcalendar.model.WorkstationDayStatus;
 import com.prodman.workcalendar.repository.ShiftSlotRepository;
 import com.prodman.workcalendar.repository.WorkstationDayStatusRepository;
+import com.prodman.workcalendar.repository.WorkstationRefRepository;
 import com.prodman.workcalendar.repository.WorkstationShiftRepository;
 import com.prodman.workcalendar.tenant.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class EquipmentReportService {
     private final WorkstationDayStatusRepository dayStatusRepository;
     private final WorkstationShiftRepository workstationShiftRepository;
     private final ShiftSlotRepository shiftSlotRepository;
+    private final WorkstationRefRepository workstationRefRepository;
 
     @Transactional(readOnly = true)
     public List<EquipmentReportRow> report(LocalDate from, LocalDate to) {
@@ -86,12 +88,9 @@ public class EquipmentReportService {
                             .multiply(BigDecimal.valueOf(100))
                             .divide(BigDecimal.valueOf(totalSlots), 2, RoundingMode.HALF_UP);
 
-            String code = null;
-            String name = null;
-            ShiftSlot any = wsSlots.isEmpty() ? null : wsSlots.get(0);
-            if (any != null) {
-                name = any.getWorkstationName();
-            }
+            var ref = workstationRefRepository.findByIdAndTenantId(wsId, tenantId).orElse(null);
+            String code = ref == null ? null : ref.getCode();
+            String name = ref == null ? null : ref.getName();
 
             rows.add(EquipmentReportRow.builder()
                     .workstationId(wsId)

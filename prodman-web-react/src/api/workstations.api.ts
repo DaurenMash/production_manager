@@ -4,7 +4,7 @@ import type { PageResponse } from './employees.api';
 export interface Workstation {
     id: string;
     departmentId: string;
-    requiredQualificationId: string | null;
+    qualificationIds: string[];
     code: string;
     name: string;
     description: string | null;
@@ -16,7 +16,6 @@ export interface Workstation {
 
 export interface CreateWorkstationRequest {
     departmentId: string;
-    requiredQualificationId?: string;
     code: string;
     name: string;
     description?: string;
@@ -44,4 +43,9 @@ export const workstationsApi = {
 
     delete: (id: string): Promise<void> =>
         apiClient.delete(`/workstation/api/workstations/${id}`).then(() => undefined),
+
+    setQualifications: (id: string, qualificationIds: string[]): Promise<void> =>
+        apiClient
+            .put(`/workstation/api/workstations/${id}/qualifications`, { qualificationIds })
+            .then(() => undefined),
 };

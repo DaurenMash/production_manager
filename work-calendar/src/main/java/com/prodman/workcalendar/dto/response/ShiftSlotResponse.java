@@ -35,6 +35,9 @@ public class ShiftSlotResponse {
     private String comment;
     private Boolean overridden;
     private String overrideReason;
+    private Boolean qualificationOverridden;
+    private Boolean qualificationMismatch;
+    private String qualificationOverrideReason;
     private Boolean isDayOffWork;
     private UUID createdBy;
     private UUID updatedBy;

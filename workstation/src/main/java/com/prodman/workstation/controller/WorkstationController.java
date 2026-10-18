@@ -1,6 +1,7 @@
 package com.prodman.workstation.controller;
 
 import com.prodman.workstation.dto.request.CreateWorkstationRequest;
+import com.prodman.workstation.dto.request.SetWorkstationQualificationsRequest;
 import com.prodman.workstation.dto.request.UpdateWorkstationRequest;
 import com.prodman.workstation.dto.response.WorkstationResponse;
 import com.prodman.workstation.service.WorkstationService;
@@ -44,6 +45,14 @@ public class WorkstationController {
     public ResponseEntity<WorkstationResponse> update(@PathVariable UUID id,
                                                       @Valid @RequestBody UpdateWorkstationRequest req) {
         return ResponseEntity.ok(service.update(id, req));
+    }
+
+    @PutMapping("/{id}/qualifications")
+    public ResponseEntity<Void> setQualifications(
+            @PathVariable UUID id,
+            @Valid @RequestBody SetWorkstationQualificationsRequest req) {
+        service.setQualifications(id, req.getQualificationIds());
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")

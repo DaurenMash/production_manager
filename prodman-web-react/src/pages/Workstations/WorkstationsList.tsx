@@ -1,49 +1,37 @@
 ﻿import { useEffect, useState } from 'react';
 import {
-  Typography,
-  Table,
-  Button,
-  Space,
-  Modal,
-  Form,
-  Input,
-  Popconfirm,
-  message,
-  Switch,
-  Tag,
-  Select,
+  Table, Button, Space, Modal, Form, Input, Select, Switch, message, Popconfirm, Tag,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+
 import { workstationsApi } from '../../api/workstations.api';
-import type { Workstation, CreateWorkstationRequest } from '../../api/workstations.api';
+import type { Workstation } from '../../api/workstations.api';
 import { departmentsApi } from '../../api/departments.api';
 import type { Department } from '../../api/departments.api';
 import { qualificationsApi } from '../../api/qualifications.api';
 import type { Qualification } from '../../api/qualifications.api';
 
-const { Title } = Typography;
-
 const WorkstationsList = () => {
-  const [workstations, setWorkstations] = useState<Workstation[]>([]);
+  const [items, setItems] = useState<Workstation[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Workstation | null>(null);
-  const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
 
   const load = async () => {
     setLoading(true);
     try {
-      const [ws, dep, quals] = await Promise.all([
-        workstationsApi.getAll(0, 200),
-        departmentsApi.getAll(0, 200),
+      const [ws, dep, qs] = await Promise.all([
+        workstationsApi.getAll(0, 500),
+        departmentsApi.getAll(0, 500),
         qualificationsApi.getAll(0, 500),
       ]);
-      setWorkstations(ws.content ?? []);
+      setItems(ws.content ?? []);
       setDepartments(dep.content ?? []);
-      setQualifications(quals.content ?? []);
+      setQualifications(qs.content ?? []);
     } catch {
       message.error('Ошибка загрузки данных');
     } finally {
@@ -55,22 +43,22 @@ const WorkstationsList = () => {
     load();
   }, []);
 
-  const handleCreate = () => {
+  const openCreate = () => {
     setEditing(null);
     form.resetFields();
-    form.setFieldsValue({ isActive: true });
+    form.setFieldsValue({ isActive: true, qualificationIds: [] });
     setModalOpen(true);
   };
 
-  const handleEdit = (w: Workstation) => {
+  const openEdit = (w: Workstation) => {
     setEditing(w);
     form.setFieldsValue({
       departmentId: w.departmentId,
-      requiredQualificationId: w.requiredQualificationId ?? undefined,
       code: w.code,
       name: w.name,
       description: w.description,
       isActive: w.isActive,
+      qualificationIds: w.qualificationIds ?? [],
     });
     setModalOpen(true);
   };
@@ -78,176 +66,152 @@ const WorkstationsList = () => {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      setSaving(true);
+      const { qualificationIds, ...wsData } = values;
 
-      const payload: CreateWorkstationRequest = {
-        departmentId: values.departmentId,
-        requiredQualificationId: values.requiredQualificationId || undefined,
-        code: values.code,
-        name: values.name,
-        description: values.description,
-        isActive: values.isActive,
-      };
-
+      let saved: Workstation;
       if (editing) {
-        await workstationsApi.update(editing.id, payload);
-        message.success('Рабочая станция обновлена');
+        saved = await workstationsApi.update(editing.id, wsData);
       } else {
-        await workstationsApi.create(payload);
-        message.success('Рабочая станция создана');
+        saved = await workstationsApi.create(wsData);
       }
 
+      await workstationsApi.setQualifications(saved.id, qualificationIds ?? []);
+
+      message.success(editing ? 'Станок обновлён' : 'Станок создан');
       setModalOpen(false);
-      form.resetFields();
       load();
     } catch (err: any) {
       if (err.errorFields) return;
       message.error(err.response?.data?.message || 'Ошибка сохранения');
-    } finally {
-      setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await workstationsApi.delete(id);
-      message.success('Рабочая станция удалена');
+      message.success('Удалено');
       load();
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Ошибка удаления');
     }
   };
 
-  const getDepartmentName = (id: string | null): string | null => {
-    if (!id) return null;
-    return departments.find((d) => d.id === id)?.name ?? null;
-  };
+  const departmentName = (id: string) =>
+      departments.find((d) => d.id === id)?.name ?? id.slice(0, 8);
 
-  const getQualificationName = (id: string | null): string | null => {
-    if (!id) return null;
-    return qualifications.find((q) => q.id === id)?.name ?? null;
+  const qualificationName = (id: string) => {
+    const q = qualifications.find((x) => x.id === id);
+    return q ? `${q.code} — ${q.name}` : id.slice(0, 8);
   };
-
-  const columns = [
-    { title: 'Код', dataIndex: 'code', key: 'code', width: 120 },
-    { title: 'Название', dataIndex: 'name', key: 'name' },
-    {
-      title: 'Отдел',
-      dataIndex: 'departmentId',
-      key: 'departmentId',
-      render: (id: string | null) => {
-        const name = getDepartmentName(id);
-        return name ? <Tag color="blue">{name}</Tag> : '—';
-      },
-    },
-    {
-      title: 'Требуемая квалификация',
-      dataIndex: 'requiredQualificationId',
-      key: 'requiredQualificationId',
-      render: (id: string | null) => {
-        const name = getQualificationName(id);
-        return name ? <Tag color="green">{name}</Tag> : '—';
-      },
-    },
-    { title: 'Описание', dataIndex: 'description', key: 'description' },
-    {
-      title: 'Активна',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      width: 100,
-      render: (v: boolean) => (v ? <Tag color="green">Да</Tag> : <Tag>Нет</Tag>),
-    },
-    {
-      title: 'Действия',
-      key: 'actions',
-      width: 120,
-      render: (_: unknown, record: Workstation) => (
-          <Space>
-            <Button icon={<EditOutlined />} size="small" onClick={() => handleEdit(record)} />
-            <Popconfirm
-                title="Удалить рабочую станцию?"
-                description="Если она используется в назначениях, удаление упадёт"
-                onConfirm={() => handleDelete(record.id)}
-                okText="Да"
-                cancelText="Нет"
-            >
-              <Button icon={<DeleteOutlined />} size="small" danger />
-            </Popconfirm>
-          </Space>
-      ),
-    },
-  ];
 
   return (
       <div>
         <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
-          <Title level={3} style={{ color: 'white', margin: 0 }}>
-            Рабочие станции
-          </Title>
-          <Space>
-            <Button onClick={load} icon={<ReloadOutlined />}>
-              Обновить
-            </Button>
-            <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleCreate}
-                style={{ background: '#2ecc71', borderColor: '#2ecc71' }}
-            >
-              Создать
-            </Button>
-          </Space>
+          <span style={{ color: 'white', fontSize: 20, fontWeight: 600 }}>Рабочие места</span>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            Добавить
+          </Button>
         </Space>
 
-        <Table dataSource={workstations} columns={columns} rowKey="id" loading={loading} />
+        <Table<Workstation>
+            rowKey="id"
+            loading={loading}
+            dataSource={items}
+            pagination={{ pageSize: 20 }}
+            columns={[
+              { title: 'Код', dataIndex: 'code', width: 120 },
+              { title: 'Название', dataIndex: 'name' },
+              {
+                title: 'Отдел',
+                dataIndex: 'departmentId',
+                render: (v: string) => departmentName(v),
+                width: 200,
+              },
+              {
+                title: 'Квалификации',
+                dataIndex: 'qualificationIds',
+                render: (ids: string[]) =>
+                    !ids || ids.length === 0
+                        ? <span style={{ color: '#888' }}>—</span>
+                        : <Space wrap size={4}>
+                          {ids.map((id) => (
+                              <Tag key={id} color="blue">{qualificationName(id)}</Tag>
+                          ))}
+                        </Space>,
+              },
+              {
+                title: 'Активен',
+                dataIndex: 'isActive',
+                width: 90,
+                render: (v: boolean) => (v ? '✅' : '❌'),
+              },
+              {
+                title: '',
+                width: 120,
+                render: (_: any, w: Workstation) => (
+                    <Space>
+                      <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(w)} />
+                      <Popconfirm
+                          title="Удалить станок?"
+                          onConfirm={() => handleDelete(w.id)}
+                          okText="Да"
+                          cancelText="Нет"
+                      >
+                        <Button size="small" danger icon={<DeleteOutlined />} />
+                      </Popconfirm>
+                    </Space>
+                ),
+              },
+            ]}
+        />
 
         <Modal
-            title={editing ? 'Редактирование рабочей станции' : 'Новая рабочая станция'}
+            title={editing ? 'Редактировать станок' : 'Новый станок'}
             open={modalOpen}
             onOk={handleSave}
             onCancel={() => setModalOpen(false)}
-            confirmLoading={saving}
             okText="Сохранить"
             cancelText="Отмена"
-            width={600}
+            width={560}
         >
           <Form form={form} layout="vertical">
-            <Form.Item
-                name="code"
-                label="Код"
-                rules={[{ required: true, message: 'Введите код' }]}
-            >
-              <Input placeholder="Например: WS-001" />
-            </Form.Item>
-
-            <Form.Item
-                name="name"
-                label="Название"
-                rules={[{ required: true, message: 'Введите название' }]}
-            >
-              <Input placeholder="Например: Печатный станок №1" />
-            </Form.Item>
-
             <Form.Item
                 name="departmentId"
                 label="Отдел"
                 rules={[{ required: true, message: 'Выберите отдел' }]}
             >
               <Select
-                  placeholder="Выберите отдел"
-                  options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
+                  options={departments.map((d) => ({
+                    value: d.id,
+                    label: `${d.code} — ${d.name}`,
+                  }))}
               />
             </Form.Item>
-
             <Form.Item
-                name="requiredQualificationId"
-                label="Требуемая квалификация"
-                tooltip="Оставьте пустым, если станок не требует специальной квалификации"
+                name="code"
+                label="Код"
+                rules={[{ required: true, message: 'Введите код' }]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+                name="name"
+                label="Название"
+                rules={[{ required: true, message: 'Введите название' }]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item name="description" label="Описание">
+              <Input.TextArea rows={2} />
+            </Form.Item>
+            <Form.Item
+                name="qualificationIds"
+                label="Квалификации, требуемые на станке"
             >
               <Select
-                  placeholder="Выберите квалификацию (опционально)"
+                  mode="multiple"
                   allowClear
-                  showSearch
+                  placeholder="Выберите одну или несколько"
                   optionFilterProp="label"
                   options={qualifications.map((q) => ({
                     value: q.id,
@@ -255,12 +219,7 @@ const WorkstationsList = () => {
                   }))}
               />
             </Form.Item>
-
-            <Form.Item name="description" label="Описание">
-              <Input.TextArea rows={3} />
-            </Form.Item>
-
-            <Form.Item name="isActive" label="Активна" valuePropName="checked">
+            <Form.Item name="isActive" label="Активен" valuePropName="checked">
               <Switch />
             </Form.Item>
           </Form>

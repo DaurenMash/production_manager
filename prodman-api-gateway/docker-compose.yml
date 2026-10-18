@@ -19,7 +19,7 @@ services:
     image: redis:7-alpine
     container_name: gateway-redis
     ports:
-      - "6380:6379"
+      - "7379:6379"
     networks:
       - prodman-network
 
