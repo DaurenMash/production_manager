@@ -48,4 +48,6 @@ public class CreateShiftPatternRequest {
     private BigDecimal coefficient;
 
     private Boolean isActive;
+
+    private String color;
 }

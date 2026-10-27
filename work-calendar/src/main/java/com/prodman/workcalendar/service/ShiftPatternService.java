@@ -57,6 +57,7 @@ public class ShiftPatternService {
                 .nightWindowEnd(req.getNightWindowEnd())
                 .coefficient(req.getCoefficient() == null ? BigDecimal.ONE : req.getCoefficient())
                 .isActive(req.getIsActive() == null ? Boolean.TRUE : req.getIsActive())
+                .color(req.getColor())
                 .build();
         validateHours(p);
         return toResponse(repository.save(p));
@@ -83,6 +84,7 @@ public class ShiftPatternService {
         p.setNightWindowEnd(req.getNightWindowEnd());
         if (req.getCoefficient() != null) p.setCoefficient(req.getCoefficient());
         if (req.getIsActive() != null) p.setIsActive(req.getIsActive());
+        p.setColor(req.getColor());
         validateHours(p);
         return toResponse(repository.save(p));
     }
@@ -121,6 +123,7 @@ public class ShiftPatternService {
                 .nightWindowEnd(p.getNightWindowEnd())
                 .coefficient(p.getCoefficient())
                 .isActive(p.getIsActive())
+                .color(p.getColor())
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())
                 .build();

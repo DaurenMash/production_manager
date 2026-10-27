@@ -27,6 +27,7 @@ public class ShiftPatternResponse {
     private LocalTime nightWindowEnd;
     private BigDecimal coefficient;
     private Boolean isActive;
+    private String color;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

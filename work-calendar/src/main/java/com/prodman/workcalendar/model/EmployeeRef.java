@@ -33,6 +33,10 @@ public class EmployeeRef {
     @Builder.Default
     private Boolean isActive = true;
 
+    /** Статус из employee-service: AVAILABLE / BUSY / VACATION / SICK_LEAVE / UNAVAILABLE / FIRED. */
+    @Column(name = "status", length = 32)
+    private String status;
+
     @Column(name = "synced_at", nullable = false)
     private LocalDateTime syncedAt;
 

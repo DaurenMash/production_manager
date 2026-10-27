@@ -8,6 +8,7 @@ import Equipment from '../pages/Equipment/Equipment';
 import TestsList from '../pages/Tests/TestsList';
 import WorkCalendar from '../pages/Calendar/WorkCalendar';
 import WorkstationsList from '../pages/Workstations/WorkstationsList';
+import TenantSettingsPage from '../pages/Settings/TenantSettingsPage';
 import UsersList from '../pages/Users/UsersList';
 import PositionsList from '../pages/Dictionaries/Positions/PositionsList';
 import DepartmentsList from '../pages/Dictionaries/Departments/DepartmentsList';
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
           { path: 'tests', element: <TestsList /> },
           { path: 'calendar', element: <WorkCalendar /> },
           { path: 'shift-patterns', element: <ShiftPatternsList /> },
+          { path: 'settings', element: <TenantSettingsPage /> },
           { path: 'reports', element: <Reports /> },
           { path: 'workstations', element: <WorkstationsList /> },
           { path: 'users', element: <UsersList /> },

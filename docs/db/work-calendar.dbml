@@ -1,0 +1,163 @@
+// work-calendar
+// Схема БД сервиса расписаний и смен.
+// Мультитенантность: каждая сущность принадлежит тенанту (tenant_id).
+// См. ADR-0002.
+
+Project prodman_calendar {
+  database_type: 'PostgreSQL'
+  Note: 'Расписания, смены, слоты. Database-per-service. Shared schema + tenant_id.'
+}
+
+// -----------------------------
+// Tenants (локальная проекция)
+// -----------------------------
+Table tenants_ref {
+  id uuid [pk, note: 'Совпадает с Tenant.id в user-service']
+}
+
+// -----------------------------
+// Refs (локальный кэш внешних сущностей)
+// -----------------------------
+// Заполняется через RefSyncService. Используется для отображения имени
+// без N REST-вызовов на каждый запрос.
+
+Table employees_ref {
+  id              uuid         [pk, note: 'employee-service.employees.id']
+  tenant_id       uuid         [not null, ref: > tenants_ref.id]
+  full_name       varchar(255)
+  department_id   uuid
+  is_active       boolean      [not null, default: true]
+  synced_at       timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id) [name: 'ix_employees_ref_tenant']
+  }
+}
+
+Table employee_qualifications_ref {
+  id                uuid         [pk]
+  tenant_id         uuid         [not null, ref: > tenants_ref.id]
+  employee_id       uuid         [not null, note: 'employee-service.employees.id']
+  qualification_id  uuid         [not null, note: 'employee-service.qualifications.id']
+  synced_at         timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, employee_id)                        [name: 'idx_emp_qual_ref_emp']
+    (tenant_id, employee_id, qualification_id)      [unique, name: 'uq_emp_qual_ref']
+  }
+}
+
+Table workstations_ref {
+  id              uuid         [pk, note: 'workstation.workstations.id']
+  tenant_id       uuid         [not null, ref: > tenants_ref.id]
+  code            varchar(64)
+  name            varchar(255)
+  department_id   uuid
+  is_active       boolean      [not null, default: true]
+  synced_at       timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id) [name: 'ix_workstations_ref_tenant']
+  }
+}
+
+// -----------------------------
+// Shift patterns
+// -----------------------------
+Table shift_patterns {
+  id                    uuid         [pk]
+  tenant_id             uuid         [not null, ref: > tenants_ref.id]
+  code                  varchar(64)  [not null]
+  name                  varchar(255) [not null]
+  start_time            time         [not null]
+  end_time              time         [not null]
+  crosses_midnight      boolean      [not null, default: false]
+  total_hours           decimal(5,2) [not null]
+  night_hours           decimal(5,2) [not null, default: 0]
+  night_window_start    time
+  night_window_end      time
+  coefficient           decimal(4,2) [not null, default: 1]
+  is_active             boolean      [not null, default: true]
+  created_at            timestamptz  [not null, default: `now()`]
+  updated_at            timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, code) [unique, name: 'ux_shift_patterns_tenant_code']
+  }
+}
+
+// -----------------------------
+// Workstation shifts (смены на станке в конкретный день)
+// -----------------------------
+Table workstation_shifts {
+  id                uuid         [pk]
+  tenant_id         uuid         [not null, ref: > tenants_ref.id]
+  workstation_id    uuid         [not null, note: 'workstation.workstations.id']
+  date              date         [not null]
+  shift_pattern_id  uuid         [not null, ref: > shift_patterns.id]
+  created_at        timestamptz  [not null, default: `now()`]
+  updated_at        timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, date) [name: 'ix_ws_shifts_tenant_date']
+    (tenant_id, workstation_id, date) [name: 'ix_ws_shifts_tenant_ws_date']
+  }
+}
+
+// -----------------------------
+// Shift slots (слоты для сотрудников внутри смены)
+// -----------------------------
+Table shift_slots {
+  id                            uuid         [pk]
+  tenant_id                     uuid         [not null, ref: > tenants_ref.id]
+  date                          date         [not null]
+  workstation_id                uuid         [not null]
+  workstation_name              varchar(255)
+  shift_pattern_id              uuid         [not null]
+  shift_pattern_name            varchar(255)
+  required_qualification_id     uuid         [note: 'Логическая ссылка на employee-service.qualifications. Одна из квалификаций станка.']
+  employee_id                   uuid         [note: 'employee-service.employees.id']
+  employee_full_name            varchar(255)
+  employee_department_id        uuid
+  planned_hours                 decimal(5,2) [not null]
+  planned_night_hours           decimal(5,2) [not null, default: 0]
+  actual_hours                  decimal(5,2)
+  actual_night_hours            decimal(5,2)
+  coefficient_override          decimal(4,2)
+  status                        varchar(32)  [not null, default: 'OPEN', note: 'OPEN | FILLED | CANCELLED']
+  comment                       text
+  overridden                    boolean      [not null, default: false, note: 'Override конфликта: сотрудник уже занят в этот день']
+  override_reason               varchar(500)
+  qualification_overridden      boolean      [not null, default: false, note: 'Override квалификации: назначен без нужной квалификации']
+  qualification_override_reason varchar(500)
+  is_day_off_work               boolean      [not null, default: false, note: 'Работа в выходной день']
+  created_by                    uuid
+  updated_by                    uuid
+  created_at                    timestamptz  [not null, default: `now()`]
+  updated_at                    timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, date)                       [name: 'ix_shift_slots_tenant_date']
+    (tenant_id, employee_id, date)          [name: 'ix_shift_slots_tenant_emp_date']
+    (tenant_id, workstation_id, date)       [name: 'ix_shift_slots_tenant_ws_date']
+  }
+}
+
+// -----------------------------
+// Workstation day status (станок в простое / работает)
+// -----------------------------
+Table workstation_day_status {
+  id              uuid         [pk]
+  tenant_id       uuid         [not null, ref: > tenants_ref.id]
+  workstation_id  uuid         [not null]
+  date            date         [not null]
+  is_working      boolean      [not null, default: true]
+  note            varchar(500)
+  created_at      timestamptz  [not null, default: `now()`]
+  updated_at      timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, date) [name: 'ix_ws_day_status_tenant_date']
+    (tenant_id, workstation_id, date) [unique, name: 'ux_ws_day_status_tenant_ws_date']
+  }
+}

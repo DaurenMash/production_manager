@@ -36,7 +36,11 @@ const pickDayColor = (d: DaySummary): { bg: string; border: string } => {
     if (d.totalWorkstations === 0) {
         return { bg: 'transparent', border: '#3d3d4f' };
     }
-    // Все слоты заполнены и есть слоты — зелёный
+// Приоритет: mismatch квалификации в этом дне → оранжевый
+    if (d.hasQualificationMismatch) {
+        return { bg: 'rgba(243, 156, 18, 0.25)', border: '#f39c12' };
+    }
+// Все слоты заполнены и есть слоты — зелёный
     if (d.totalSlots > 0 && d.openSlots === 0) {
         return { bg: 'rgba(46, 204, 113, 0.15)', border: '#2ecc71' };
     }

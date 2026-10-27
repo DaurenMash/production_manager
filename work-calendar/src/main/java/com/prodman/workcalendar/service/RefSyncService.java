@@ -123,6 +123,7 @@ public class RefSyncService {
                         .departmentId(m.get("departmentId") == null ? null
                                 : UUID.fromString(String.valueOf(m.get("departmentId"))))
                         .isActive(true)
+                        .status((String) m.get("status"))
                         .build();
                 employeeRefRepo.save(ref);
                 count++;

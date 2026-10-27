@@ -67,6 +67,10 @@ public class ShiftPattern {
     @Builder.Default
     private Boolean isActive = true;
 
+    /** Цвет в HEX (#RRGGBB) для отображения в графике работы. Может быть null. */
+    @Column(name = "color", length = 7)
+    private String color;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

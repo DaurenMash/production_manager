@@ -86,3 +86,5 @@ echo BUILD FAILED!
 echo ========================================
 pause
 exit /b 1
+
+@REM npm run dev -- --host 127.0.0.1 --port 3000

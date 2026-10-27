@@ -12,6 +12,7 @@ export interface ShiftPattern {
     nightHours: number;
     nightWindowStart: string | null;
     nightWindowEnd: string | null;
+    color: string | null;
     coefficient: number;
     isActive: boolean;
     createdAt: string;
@@ -30,6 +31,7 @@ export interface CreateShiftPatternRequest {
     nightWindowEnd?: string;
     coefficient?: number;
     isActive?: boolean;
+    color?: string | null;
 }
 
 export type UpdateShiftPatternRequest = CreateShiftPatternRequest;

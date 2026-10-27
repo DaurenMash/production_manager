@@ -32,6 +32,7 @@ const MainLayout = () => {
   const menuItems: any[] = [
     { key: '/dashboard', icon: <DashboardOutlined />, label: 'Дашборд' },
     { key: '/employees', icon: <TeamOutlined />, label: 'Работники' },
+    { key: '/settings',  icon: <SettingOutlined />, label: 'Настройки' },
     { key: '/equipment', icon: <AppstoreOutlined />, label: 'Оборудование' },
     { key: '/tests', icon: <ExperimentOutlined />, label: 'Тестирование' },
     { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },

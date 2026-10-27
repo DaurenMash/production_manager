@@ -118,6 +118,42 @@ flowchart LR
 
 Детали — в [ADR-0002](./adr/0002-multi-tenancy.md).
 
+## Квалификации: станок ↔ сотрудник
+
+Квалификации — это отдельная сущность в `employee-service`, которая
+описывает, что именно умеет сотрудник и что именно требуется для работы
+на станке. Одна квалификация может требовать несколько слотов на одном
+станке — например, на станке «Фишер» нужен 1 печатник и 2 помощника,
+это три слота, у каждого своя `required_qualification_id`.
+
+Схема:
+employee-service.qualifications
+│
+├── employee-service.employee_qualifications (M:N)
+│ └── кто какую квалификацию имеет (с уровнем)
+│
+└── workstation-service.workstation_qualifications (M:N)
+└── какие квалификации принимает станок
+
+work-calendar.shift_slots.required_qualification_id → одна из квалификаций станка
+
+При назначении сотрудника (`work-calendar`):
+
+1. Слот имеет `required_qualification_id` (одна из квалификаций станка) — или `null` (без требований).
+2. `work-calendar` сверяет `employee_qualifications_ref` (локальный кэш).
+3. Не совпало → **409 QUALIFICATION_MISMATCH** + модалка override на фронте.
+4. Override → `qualification_overridden = true`, `qualification_override_reason` сохраняется.
+5. Визуально: слот и день оранжевые (`qualificationMismatch = true` — независимо от override).
+
+Синк `employee_qualifications_ref`:
+- при каждом `assign` (для конкретного сотрудника),
+- по `POST /api/sync/all` (все сотрудники тенанта).
+
+Детали:
+- [docs/db/workstation.dbml](./db/workstation.dbml) — `workstation_qualifications`
+- [docs/db/work-calendar.dbml](./db/work-calendar.dbml) — `employee_qualifications_ref`, `shift_slots`
+
+
 ## Основные потоки
 
 ### Регистрация клиента и вход

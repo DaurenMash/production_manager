@@ -141,7 +141,15 @@ export interface EmployeeHoursReportRow {
     totalHours: number;
     nightHours: number;
     dayOffHours: number;
+    normalHours: number;
     assignmentsCount: number;
+    dayOffAssignmentsCount: number;
+    baseCoefficientName: string;
+    baseCoefficientValue: number;
+    weekendCoefficientName: string;
+    weekendCoefficientValue: number;
+    nightCoefficientName: string;
+    nightCoefficientValue: number;
 }
 
 export interface DepartmentHoursReportRow {

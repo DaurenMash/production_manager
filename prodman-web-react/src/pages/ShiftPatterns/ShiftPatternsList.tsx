@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
     Typography, Table, Button, Space, Modal, Form, Input, Popconfirm, message,
-    Switch, Tag, TimePicker, InputNumber,
+    Switch, Tag, TimePicker, InputNumber, ColorPicker,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -37,7 +37,7 @@ const ShiftPatternsList = () => {
     const handleCreate = () => {
         setEditing(null);
         form.resetFields();
-        form.setFieldsValue({ coefficient: 1.0, nightHours: 0, isActive: true });
+        form.setFieldsValue({ coefficient: 1.0, nightHours: 0, color: '#ffffff', isActive: true});
         setModalOpen(true);
     };
 
@@ -52,6 +52,7 @@ const ShiftPatternsList = () => {
             nightHours: p.nightHours,
             coefficient: p.coefficient,
             isActive: p.isActive,
+            color: p.color ?? '#ffffff',
         });
         setModalOpen(true);
     };
@@ -70,6 +71,7 @@ const ShiftPatternsList = () => {
                 nightHours: values.nightHours ?? 0,
                 coefficient: values.coefficient ?? 1.0,
                 isActive: values.isActive,
+                color: values.color ? values.color.toHexString() : null,
             };
 
             if (editing) {
@@ -129,6 +131,18 @@ const ShiftPatternsList = () => {
             dataIndex: 'coefficient',
             key: 'coefficient',
             width: 80,
+        },
+        {
+            title: 'Цвет',
+            key: 'color',
+            width: 80,
+            render: (_: unknown, r: ShiftPattern) => (
+                <div style={{
+                    width: 24, height: 24, borderRadius: 4,
+                    background: r.color ?? '#444',
+                    border: '1px solid #555',
+                }} />
+            ),
         },
         {
             title: 'Активен',
@@ -247,6 +261,15 @@ const ShiftPatternsList = () => {
                         tooltip="Множитель оплаты. Пока 1.0 для всех."
                     >
                         <InputNumber min={0.1} max={5} step={0.1} style={{ width: '100%' }} />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="color"
+                        label="Цвет для графика"
+                        tooltip="Используется в отчёте «График работы» для отображения этой смены"
+                        initialValue="#ffffff"
+                    >
+                        <ColorPicker format="hex" showText disabledAlpha />
                     </Form.Item>
 
                     <Form.Item name="isActive" label="Активен" valuePropName="checked">

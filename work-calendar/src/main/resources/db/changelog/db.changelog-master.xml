@@ -10,5 +10,6 @@
     <include file="v1/v1.0.2__add_refs.sql" relativeToChangelogFile="true"/>
     <include file="v1/v1.0.3__add_qualification_override.sql" relativeToChangelogFile="true"/>
     <include file="v1/v1.0.4__employee_qualifications_ref.sql" relativeToChangelogFile="true"/>
+    <include file="v1/v1.0.5__add_color_and_status.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>
