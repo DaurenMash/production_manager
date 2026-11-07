@@ -28,5 +28,7 @@ public class AuthResponse {
     private String tenantSlug;
     private TenantStatus tenantStatus;
     private TenantPlan tenantPlan;
+    /** NULL, если пользователь не привязан к департаменту (ADMIN, TENANT_VISITOR и т.п.). */
+    private UUID departmentId;   // ✅ добавлено
     private long expiresIn;
 }

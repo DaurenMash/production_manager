@@ -3,6 +3,7 @@ package com.prodman.userservice.repository;
 import com.prodman.userservice.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -28,8 +29,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      */
     Optional<User> findByTenantIdIsNullAndEmail(String email);
 
+    @EntityGraph(attributePaths = "tempRoles")
     Page<User> findAllByTenantId(UUID tenantId, Pageable pageable);
 
+    @EntityGraph(attributePaths = "tempRoles")
     Optional<User> findByIdAndTenantId(UUID id, UUID tenantId);
 
     boolean existsByTenantIdAndUsername(UUID tenantId, String username);

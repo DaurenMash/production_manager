@@ -16,6 +16,7 @@ import QualificationsList from '../pages/Dictionaries/Qualifications/Qualificati
 import ShiftPatternsList from '../pages/ShiftPatterns/ShiftPatternsList';
 import Reports from '../pages/Reports/Reports';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import PlatformDashboard from '../pages/Platform/PlatformDashboard';
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
         element: <MainLayout />,
         children: [
           { index: true, element: <Navigate to="/dashboard" replace /> },
+          { path: 'platform-dashboard', element: <PlatformDashboard /> },
           { path: 'dashboard', element: <Dashboard /> },
           { path: 'employees', element: <EmployeesList /> },
           { path: 'employees/:id', element: <EmployeeDetail /> },

@@ -27,6 +27,8 @@ const Login = () => {
         username: values.username.trim(),
         password: values.password,
       });
+      const currentRole = useAuthStore.getState().user?.role;
+      navigate(currentRole === 'PLATFORM_ADMIN' ? '/platform-dashboard' : '/dashboard');
       navigate('/dashboard');
     } catch (err: any) {
       const msg = err?.response?.data?.message;

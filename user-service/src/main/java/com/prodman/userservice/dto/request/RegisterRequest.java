@@ -1,6 +1,3 @@
-// DTO RegisterRequest больше не используется.
-// Регистрация нового тенанта — RegisterTenantRequest.
-// Добавление пользователя в существующий тенант — через AdminUserController (позже).
 package com.prodman.userservice.dto.request;
 
 import com.prodman.userservice.model.Role;
@@ -11,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 /**
  * Регистрация пользователя внутри существующего тенанта.
@@ -37,4 +36,10 @@ public class RegisterRequest {
 
     @Builder.Default
     private Role role = Role.VISITOR;
+
+    /**
+     * Обязателен для HEAD_OF_DEPARTMENT и DEPT_VISITOR.
+     * Для остальных ролей — null.
+     */
+    private UUID departmentId;
 }

@@ -9,6 +9,7 @@ export interface User {
     username: string;
     email: string;
     role: Role;
+    departmentId: string | null;
 }
 
 interface AuthState {
@@ -27,11 +28,27 @@ interface AuthState {
 const applyAuthResponse = (res: AuthResponse) => {
     localStorage.setItem('accessToken', res.accessToken);
     localStorage.setItem('refreshToken', res.refreshToken);
+    localStorage.setItem('role', res.role);
+
     if (res.tenantId) {
         localStorage.setItem('tenantId', res.tenantId);
     } else {
         localStorage.removeItem('tenantId');
     }
+
+    if (res.departmentId) {
+        localStorage.setItem('departmentId', res.departmentId);
+    } else {
+        localStorage.removeItem('departmentId');
+    }
+};
+
+const clearAuthStorage = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('tenantId');
+    localStorage.removeItem('role');
+    localStorage.removeItem('departmentId');
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -57,6 +74,7 @@ export const useAuthStore = create<AuthState>()(
                         username: res.username,
                         email: res.email,
                         role: res.role,
+                        departmentId: res.departmentId ?? null,
                     },
                     accessToken: res.accessToken,
                     refreshToken: res.refreshToken,
@@ -69,9 +87,7 @@ export const useAuthStore = create<AuthState>()(
             },
 
             logout: () => {
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('refreshToken');
-                localStorage.removeItem('tenantId');
+                clearAuthStorage();
                 set({
                     user: null,
                     accessToken: null,

@@ -6,7 +6,9 @@
     https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
 
     <include file="v1/v1.0.0__init_user_schema.sql" relativeToChangelogFile="true"/>
+    <include file="v1/v1.0.1__add_department_and_temp_roles.sql" relativeToChangelogFile="true"/>
+    <include file="v1/v1.0.2__update_roles_constraint.sql" relativeToChangelogFile="true"/>
+    <include file="v1/v1.0.3__add_platform_admin.sql" relativeToChangelogFile="true"/>
+    <include file="v1/v1.0.4__add_created_by.sql" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>
-
-

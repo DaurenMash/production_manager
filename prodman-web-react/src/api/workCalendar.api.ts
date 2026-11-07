@@ -1,4 +1,5 @@
 import apiClient from './client';
+import type { ScheduleResponse } from '../types/schedule.types';
 
 export type ShiftSlotStatus = 'OPEN' | 'FILLED' | 'CANCELLED';
 
@@ -257,5 +258,13 @@ export const workCalendarApi = {
     refreshQualifications: (): Promise<QualificationRefreshResult> =>
         apiClient
             .post('/work-calendar/api/shift-slots/refresh-qualifications')
+            .then((res) => res.data),
+
+    /** График работы сотрудников: строки = сотрудники, колонки = дни. */
+    getSchedule: (from: string, to: string, departmentId?: string): Promise<ScheduleResponse> =>
+        apiClient
+            .get('/work-calendar/api/reports/schedule', {
+                params: { from, to, ...(departmentId ? { departmentId } : {}) },
+            })
             .then((res) => res.data),
 };

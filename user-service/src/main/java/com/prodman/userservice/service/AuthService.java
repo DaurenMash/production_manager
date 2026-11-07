@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -101,11 +103,20 @@ public class AuthService {
             throw new CustomException.Unauthorized("Tenant is " + tenant.getStatus());
         }
 
-        String role = "ROLE_" + user.getRole().name();
         String tenantStatus = tenant == null ? null : tenant.getStatus().name();
 
+        // Собираем все активные роли (основная + временные)
+        List<String> activeRoles = new ArrayList<>();
+        activeRoles.add(user.getRole().name());
+        for (UserRole ur : user.getTempRoles()) {
+            if (ur.isActiveNow() && ur.getRole() != user.getRole()) {
+                activeRoles.add(ur.getRole().name());
+            }
+        }
+
         String accessToken = jwtService.generateToken(
-                user.getUsername(), user.getId(), role, user.getTenantId(), tenantStatus);
+                user.getUsername(), user.getId(), activeRoles, user.getTenantId(), tenantStatus, user.getDepartmentId());
+
         String refreshToken = jwtService.generateRefreshToken(
                 user.getUsername(), user.getId(), user.getTenantId());
 
@@ -120,6 +131,7 @@ public class AuthService {
                 .tenantSlug(tenant == null ? null : tenant.getSlug())
                 .tenantStatus(tenant == null ? null : tenant.getStatus())
                 .tenantPlan(tenant == null ? null : tenant.getPlan())
+                .departmentId(user.getDepartmentId())
                 .expiresIn(86400000L)
                 .build();
     }
@@ -145,16 +157,24 @@ public class AuthService {
                     .orElseThrow(() -> new CustomException.NotFound("User not found"));
         }
 
-        String role = "ROLE_" + user.getRole().name();
         String tenantStatus = tenant == null ? null : tenant.getStatus().name();
 
-        String newAccess = jwtService.generateToken(
-                user.getUsername(), user.getId(), role, user.getTenantId(), tenantStatus);
+        // Собираем все активные роли (основная + временные)
+        List<String> activeRoles = new ArrayList<>();
+        activeRoles.add(user.getRole().name());
+        for (UserRole ur : user.getTempRoles()) {
+            if (ur.isActiveNow() && ur.getRole() != user.getRole()) {
+                activeRoles.add(ur.getRole().name());
+            }
+        }
+
+        String accessToken = jwtService.generateToken(
+                user.getUsername(), user.getId(), activeRoles, user.getTenantId(), tenantStatus, user.getDepartmentId());
         String newRefresh = jwtService.generateRefreshToken(
                 user.getUsername(), user.getId(), user.getTenantId());
 
         return AuthResponse.builder()
-                .accessToken(newAccess)
+                .accessToken(accessToken)
                 .refreshToken(newRefresh)
                 .userId(user.getId())
                 .username(user.getUsername())
@@ -164,6 +184,7 @@ public class AuthService {
                 .tenantSlug(tenant == null ? null : tenant.getSlug())
                 .tenantStatus(tenant == null ? null : tenant.getStatus())
                 .tenantPlan(tenant == null ? null : tenant.getPlan())
+                .departmentId(user.getDepartmentId())
                 .expiresIn(86400000L)
                 .build();
     }

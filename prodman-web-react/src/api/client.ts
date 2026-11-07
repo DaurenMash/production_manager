@@ -25,6 +25,21 @@ apiClient.interceptors.request.use(
         if (tenantId) {
             config.headers['X-Tenant-Id'] = tenantId;
         }
+        apiClient.interceptors.request.use(
+            (config) => {
+                const token = localStorage.getItem('accessToken');
+                const tenantId = localStorage.getItem('tenantId');
+
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                }
+                if (tenantId) {
+                    config.headers['X-Tenant-Id'] = tenantId;
+                }
+                return config;
+            },
+            (error) => Promise.reject(error)
+        );
         return config;
     },
     (error) => Promise.reject(error)

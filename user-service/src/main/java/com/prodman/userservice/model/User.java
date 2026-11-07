@@ -1,10 +1,13 @@
 package com.prodman.userservice.model;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -19,7 +22,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Data
@@ -52,6 +57,10 @@ public class User implements UserDetails {
     @Column(name = "role", nullable = false)
     private Role role;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private Set<UserRole> tempRoles = new HashSet<>();
+
     @Builder.Default
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
@@ -61,6 +70,29 @@ public class User implements UserDetails {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    /**
+     * Ссылка на департамент (employee-service.departments.id).
+     * Используется для ролей HEAD_OF_DEPARTMENT и DEPT_VISITOR.
+     * Для ADMIN и TENANT_VISITOR — null.
+     */
+    @Column(name = "department_id")
+    private UUID departmentId;
+
+    /**
+     * Кто создал пользователя. NULL = создан системой/платформой (сид,
+     * PLATFORM_ADMIN) → удалять такого пользователя нельзя никому, кроме PLATFORM_ADMIN.
+     */
+    @Column(name = "created_by")
+    private UUID createdBy;
+
+    /**
+     * Роль создателя на момент создания. Позволяет отличить «создан платформой»
+     * (created_by_role = PLATFORM_ADMIN) от «создан тенантным админом».
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "created_by_role", length = 32)
+    private Role createdByRole;
 
     @PrePersist
     protected void onCreate() {

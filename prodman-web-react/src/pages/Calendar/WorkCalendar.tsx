@@ -1,5 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { Space, Select, message, Card } from 'antd';
+import { Space, Select, message, Card, Button } from 'antd';
+import { LineChartOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom'; // <--- добавили
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -26,6 +28,8 @@ const WorkCalendar = () => {
 
   const [summary, setSummary] = useState<MonthSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+
+  const navigate = useNavigate(); // <--- добавили
 
   const loadDepartments = async () => {
     try {
@@ -98,6 +102,15 @@ const WorkCalendar = () => {
     }
   };
 
+  // <--- Функция перехода в график --->
+  const goToSchedule = () => {
+    const params = new URLSearchParams();
+    params.append('tab', 'schedule');
+    params.append('month', dayjs().year(year).month(month).format('YYYY-MM'));
+    if (departmentId) params.append('departmentId', departmentId);
+    navigate(`/reports?${params.toString()}`);
+  };
+
   return (
       <div>
         <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }} wrap>
@@ -113,6 +126,15 @@ const WorkCalendar = () => {
                 onChange={setDepartmentId}
                 options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
             />
+            {/* <--- Кнопка перехода ---> */}
+            <Button
+                type="primary"
+                icon={<LineChartOutlined />}
+                onClick={goToSchedule}
+                style={{ background: '#2E8B57', borderColor: '#2E8B57' }}
+            >
+              График за месяц
+            </Button>
           </Space>
         </Space>
 

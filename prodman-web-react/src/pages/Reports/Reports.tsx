@@ -1,20 +1,97 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-    Typography, Space, DatePicker, Select, Button, Table, message, Card, Tag,
+    Typography, Space, DatePicker, Select, Button, Table, message, Card, Tag, Tabs,
 } from 'antd';
 import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
+import { useSearchParams } from 'react-router-dom'; // <--- добавили
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/ru';
 import { workCalendarApi } from '../../api/workCalendar.api';
 import type { EmployeeHoursReportRow } from '../../api/workCalendar.api';
 import { departmentsApi } from '../../api/departments.api';
 import type { Department } from '../../api/departments.api';
+import type { ScheduleResponse } from '../../types/schedule.types';
+import ScheduleGrid from '../Calendar/ScheduleGrid';
 
 dayjs.locale('ru');
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
-const Reports = () => {
+// ==========================================
+// Вкладка 1: График работы (ScheduleGrid)
+// ==========================================
+const ScheduleTab = () => {
+    const [searchParams] = useSearchParams(); // <--- читаем URL
+
+    const [data, setData] = useState<ScheduleResponse | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [departments, setDepartments] = useState<Department[]>([]);
+
+    // Инициализируем состояние из URL, если там что-то есть
+    const initDept = searchParams.get('departmentId') || undefined;
+    const initMonth = searchParams.get('month')
+        ? dayjs(searchParams.get('month'), 'YYYY-MM')
+        : dayjs();
+
+    const [departmentId, setDepartmentId] = useState<string | undefined>(initDept);
+    const [selectedMonth, setSelectedMonth] = useState<Dayjs>(initMonth);
+
+    useEffect(() => {
+        departmentsApi.getAll(0, 500).then(res => setDepartments(res.content ?? [])).catch(() => {});
+    }, []);
+
+    const loadSchedule = async () => {
+        setLoading(true);
+        try {
+            const from = selectedMonth.startOf('month').format('YYYY-MM-DD');
+            const to = selectedMonth.endOf('month').format('YYYY-MM-DD');
+            const res = await workCalendarApi.getSchedule(from, to, departmentId);
+            setData(res);
+        } catch {
+            message.error('Ошибка загрузки графика');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadSchedule();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedMonth.valueOf(), departmentId]);
+
+    return (
+        <div>
+            <Space style={{ marginBottom: 16 }} wrap>
+                <DatePicker
+                    picker="month"
+                    value={selectedMonth}
+                    onChange={(v) => { if (v) setSelectedMonth(v); }}
+                    format="MMMM YYYY"
+                    allowClear={false}
+                />
+                <Select
+                    placeholder="Все отделы"
+                    allowClear
+                    style={{ width: 220 }}
+                    value={departmentId}
+                    onChange={setDepartmentId}
+                    options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                />
+                <Button icon={<ReloadOutlined />} onClick={loadSchedule}>
+                    Обновить
+                </Button>
+            </Space>
+            <Card style={{ background: '#2d2d3f', border: 'none' }} styles={{ body: { padding: 12 } }}>
+                <ScheduleGrid data={data} loading={loading} />
+            </Card>
+        </div>
+    );
+};
+
+// ==========================================
+// Вкладка 2: Часы по сотрудникам (старый отчёт)
+// ==========================================
+const HoursByEmployeeTab = () => {
     const [data, setData] = useState<EmployeeHoursReportRow[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(false);
@@ -170,9 +247,6 @@ const Reports = () => {
     return (
         <div>
             <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }} wrap>
-                <Title level={3} style={{ color: 'white', margin: 0 }}>
-                    Отчёт: часы по сотрудникам
-                </Title>
                 <Space wrap>
                     <RangePicker
                         value={range}
@@ -251,6 +325,55 @@ const Reports = () => {
                 выходные × {data[0]?.weekendCoefficientValue ?? '?'} +
                 ночные × {data[0]?.nightCoefficientValue ?? '?'}.
             </Text>
+        </div>
+    );
+};
+
+
+// ==========================================
+// Основная страница Отчёты
+// ==========================================
+const Reports = () => {
+    const [searchParams, setSearchParams] = useSearchParams(); // <--- читаем URL
+    const tabFromUrl = searchParams.get('tab');
+
+    // Определяем активную вкладку (по умолчанию schedule)
+    const activeTab = tabFromUrl === 'hours' ? 'hours' : 'schedule';
+
+    const handleTabChange = (key: string) => {
+        // Меняем URL при клике на вкладку
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('tab', key);
+        setSearchParams(newParams, { replace: true });
+    };
+
+    return (
+        <div>
+            <Title level={3} style={{ color: 'white', marginTop: 0, marginBottom: 24 }}>
+                Отчёты
+            </Title>
+            <Tabs
+                activeKey={activeTab}
+                onChange={handleTabChange}
+                items={[
+                    {
+                        key: 'schedule',
+                        label: 'График работы',
+                        children: <ScheduleTab />,
+                    },
+                    {
+                        key: 'hours',
+                        label: 'Часы по сотрудникам',
+                        children: <HoursByEmployeeTab />,
+                    },
+                    {
+                        key: 'equipment',
+                        label: 'Оборудование',
+                        children: <Text style={{ color: '#aaa' }}>Этот отчёт будет добавлен позже.</Text>,
+                        disabled: true,
+                    }
+                ]}
+            />
         </div>
     );
 };

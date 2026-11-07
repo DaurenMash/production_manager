@@ -10,6 +10,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -18,8 +19,9 @@ import java.util.function.Function;
 public class JwtService {
 
     public static final String CLAIM_USER_ID = "userId";
-    public static final String CLAIM_ROLE = "role";
+    public static final String CLAIM_ROLES = "roles";
     public static final String CLAIM_TENANT_ID = "tenantId";
+    public static final String CLAIM_DEPARTMENT_ID = "departmentId";
     public static final String CLAIM_TENANT_STATUS = "tenantStatus";
 
     @Value("${jwt.secret}")
@@ -66,21 +68,28 @@ public class JwtService {
      * Генерация access-токена.
      * @param username имя пользователя (subject)
      * @param userId UUID пользователя (может быть null для старых тестовых)
-     * @param role роль (например, "ROLE_ADMIN")
+     * @param roles роль (например, "ROLE_ADMIN")
      * @param tenantId UUID тенанта (null для PLATFORM_ADMIN)
      * @param tenantStatus статус тенанта (null для PLATFORM_ADMIN)
      */
     public String generateToken(String username,
                                 UUID userId,
-                                String role,
+                                List<String> roles,
                                 UUID tenantId,
-                                String tenantStatus) {
+                                String tenantStatus,
+                                UUID departmentId) {
         Map<String, Object> claims = new HashMap<>();
         if (userId != null) claims.put(CLAIM_USER_ID, userId.toString());
-        if (role != null) claims.put(CLAIM_ROLE, role);
+        if (roles != null) claims.put(CLAIM_ROLES, roles);
         if (tenantId != null) claims.put(CLAIM_TENANT_ID, tenantId.toString());
         if (tenantStatus != null) claims.put(CLAIM_TENANT_STATUS, tenantStatus);
+        if (departmentId != null) claims.put(CLAIM_DEPARTMENT_ID, departmentId.toString());
         return buildToken(claims, username, jwtExpiration);
+    }
+
+    public UUID extractDepartmentId(String token) {
+        String raw = extractClaim(token, c -> c.get(CLAIM_DEPARTMENT_ID, String.class));
+        return raw == null ? null : UUID.fromString(raw);
     }
 
     public String generateRefreshToken(String username,
@@ -113,4 +122,9 @@ public class JwtService {
     private boolean isTokenExpired(String token) {
         return extractClaim(token, Claims::getExpiration).before(new Date());
     }
+
+    public List<String> extractRoles(String token) {
+        return extractClaim(token, c -> c.get(CLAIM_ROLES, List.class));
+    }
+
 }

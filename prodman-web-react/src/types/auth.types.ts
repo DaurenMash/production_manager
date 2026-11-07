@@ -1,9 +1,12 @@
 ﻿export const Role = {
   PLATFORM_ADMIN: 'PLATFORM_ADMIN',
   ADMIN: 'ADMIN',
-  OPERATOR: 'OPERATOR',
-  ANALYST: 'ANALYST',
+  HEAD_OF_DEPARTMENT: 'HEAD_OF_DEPARTMENT',
+  TENANT_VISITOR: 'TENANT_VISITOR',
+  DEPT_VISITOR: 'DEPT_VISITOR',
   VISITOR: 'VISITOR',
+  ANALYST_1: 'ANALYST_1',
+  ANALYST_2: 'ANALYST_2',
 } as const;
 export type Role = (typeof Role)[keyof typeof Role];
 
@@ -28,6 +31,7 @@ export interface User {
   username: string;
   email: string;
   role: Role;
+  departmentId: string | null;
   enabled: boolean;
   createdAt: string;
 }
@@ -52,6 +56,7 @@ export interface AuthResponse {
   tenantStatus: TenantStatus | null;
   tenantPlan: TenantPlan | null;
   expiresIn: number;
+  departmentId: string | null;
 }
 
 export interface RegisterTenantRequest {
