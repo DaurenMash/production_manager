@@ -2,10 +2,12 @@
 // Схема БД сервиса расписаний и смен.
 // Мультитенантность: каждая сущность принадлежит тенанту (tenant_id).
 // См. ADR-0002.
+// Идентификаторы — UUID v7 (Hibernate @UuidGenerator(style = TIME)).
+// Денормализация: shift_slots хранит name-копии, чтобы отчёты не ходили в соседние сервисы.
 
 Project prodman_calendar {
   database_type: 'PostgreSQL'
-  Note: 'Расписания, смены, слоты. Database-per-service. Shared schema + tenant_id.'
+  Note: 'Расписания, смены, слоты, отчёты. Database-per-service. Shared schema + tenant_id.'
 }
 
 // -----------------------------
@@ -42,8 +44,8 @@ Table employee_qualifications_ref {
   synced_at         timestamptz  [not null, default: `now()`]
 
   indexes {
-    (tenant_id, employee_id)                        [name: 'idx_emp_qual_ref_emp']
-    (tenant_id, employee_id, qualification_id)      [unique, name: 'uq_emp_qual_ref']
+    (tenant_id, employee_id)                   [name: 'idx_emp_qual_ref_emp']
+    (tenant_id, employee_id, qualification_id) [unique, name: 'uq_emp_qual_ref']
   }
 }
 
@@ -62,8 +64,10 @@ Table workstations_ref {
 }
 
 // -----------------------------
-// Shift patterns
+// Shift patterns (шаблоны смен)
 // -----------------------------
+// Глобальные для тенанта. Задают время, часы, ночные часы, коэффициент.
+// Используются в workstation_shifts и shift_slots.
 Table shift_patterns {
   id                    uuid         [pk]
   tenant_id             uuid         [not null, ref: > tenants_ref.id]
@@ -74,15 +78,17 @@ Table shift_patterns {
   crosses_midnight      boolean      [not null, default: false]
   total_hours           decimal(5,2) [not null]
   night_hours           decimal(5,2) [not null, default: 0]
-  night_window_start    time
-  night_window_end      time
-  coefficient           decimal(4,2) [not null, default: 1]
+  night_window_start    time         [note: 'Начало ночного окна (например, 22:00)']
+  night_window_end      time         [note: 'Конец ночного окна (например, 06:00)']
+  coefficient           decimal(4,2) [not null, default: 1, note: 'Множитель оплаты']
+  color                 varchar(7)   [note: 'HEX (#ffffff). Используется в ScheduleGrid и MonthGrid.']
   is_active             boolean      [not null, default: true]
   created_at            timestamptz  [not null, default: `now()`]
   updated_at            timestamptz  [not null, default: `now()`]
 
   indexes {
     (tenant_id, code) [unique, name: 'ux_shift_patterns_tenant_code']
+    (tenant_id, is_active) [name: 'ix_shift_patterns_tenant_active']
   }
 }
 
@@ -99,8 +105,9 @@ Table workstation_shifts {
   updated_at        timestamptz  [not null, default: `now()`]
 
   indexes {
-    (tenant_id, date) [name: 'ix_ws_shifts_tenant_date']
+    (tenant_id, date)                 [name: 'ix_ws_shifts_tenant_date']
     (tenant_id, workstation_id, date) [name: 'ix_ws_shifts_tenant_ws_date']
+    (tenant_id, shift_pattern_id)     [name: 'ix_ws_shifts_tenant_pattern']
   }
 }
 
@@ -115,7 +122,7 @@ Table shift_slots {
   workstation_name              varchar(255)
   shift_pattern_id              uuid         [not null]
   shift_pattern_name            varchar(255)
-  required_qualification_id     uuid         [note: 'Логическая ссылка на employee-service.qualifications. Одна из квалификаций станка.']
+  required_qualification_id     uuid         [note: 'employee-service.qualifications.id. Одна из квалификаций станка.']
   employee_id                   uuid         [note: 'employee-service.employees.id']
   employee_full_name            varchar(255)
   employee_department_id        uuid
@@ -126,9 +133,9 @@ Table shift_slots {
   coefficient_override          decimal(4,2)
   status                        varchar(32)  [not null, default: 'OPEN', note: 'OPEN | FILLED | CANCELLED']
   comment                       text
-  overridden                    boolean      [not null, default: false, note: 'Override конфликта: сотрудник уже занят в этот день']
+  overridden                    boolean      [not null, default: false, note: 'Override: сотрудник уже занят в этот день']
   override_reason               varchar(500)
-  qualification_overridden      boolean      [not null, default: false, note: 'Override квалификации: назначен без нужной квалификации']
+  qualification_overridden      boolean      [not null, default: false, note: 'Override: назначен без нужной квалификации']
   qualification_override_reason varchar(500)
   is_day_off_work               boolean      [not null, default: false, note: 'Работа в выходной день']
   created_by                    uuid
@@ -137,9 +144,10 @@ Table shift_slots {
   updated_at                    timestamptz  [not null, default: `now()`]
 
   indexes {
-    (tenant_id, date)                       [name: 'ix_shift_slots_tenant_date']
-    (tenant_id, employee_id, date)          [name: 'ix_shift_slots_tenant_emp_date']
-    (tenant_id, workstation_id, date)       [name: 'ix_shift_slots_tenant_ws_date']
+    (tenant_id, date)                          [name: 'ix_shift_slots_tenant_date']
+    (tenant_id, employee_id, date)             [name: 'ix_shift_slots_tenant_emp_date']
+    (tenant_id, workstation_id, date)          [name: 'ix_shift_slots_tenant_ws_date']
+    (tenant_id, required_qualification_id)     [name: 'ix_shift_slots_tenant_qual']
   }
 }
 
@@ -157,7 +165,26 @@ Table workstation_day_status {
   updated_at      timestamptz  [not null, default: `now()`]
 
   indexes {
-    (tenant_id, date) [name: 'ix_ws_day_status_tenant_date']
-    (tenant_id, workstation_id, date) [unique, name: 'ux_ws_day_status_tenant_ws_date']
+    (tenant_id, date)                  [name: 'ix_ws_day_status_tenant_date']
+    (tenant_id, workstation_id, date)  [unique, name: 'ux_ws_day_status_tenant_ws_date']
   }
 }
+
+// -----------------------------
+// Примечания
+// -----------------------------
+// В shift_slots намеренно дублируются workstation_name, shift_pattern_name,
+// employee_full_name, employee_department_id — это денормализация для отчётов
+// (без N+1 REST-вызовов при построении ScheduleGrid и CSV-экспорта).
+// Источник истины — employees_ref / workstations_ref / shift_patterns;
+// денормализованные поля перезаписываются при assign/update слота.
+//
+// status:
+//   OPEN      — слот создан, сотрудник не назначен
+//   FILLED    — сотрудник назначен
+//   CANCELLED — отменён (не учитывается в отчётах)
+//
+// qualificationMismatch — вычисляемое в API:
+//   required_qualification_id != null
+//   AND employee_id != null
+//   AND квалификация сотрудника не содержит required_qualification_id.

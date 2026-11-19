@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Button, Dropdown, Avatar, Space, Badge, Tag } from 'antd';
+import { Layout, Menu, Button, Dropdown, Avatar, Space, Badge, Tag, message } from 'antd';
 import {
   DashboardOutlined,
   TeamOutlined,
@@ -18,6 +18,9 @@ import {
   BarChartOutlined,
   IdcardOutlined,
   ApartmentOutlined,
+  ArrowLeftOutlined,
+  FileTextOutlined,
+  LineChartOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../../store/auth.store';
 
@@ -27,23 +30,24 @@ const MainLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user, logout, isImpersonating, exitImpersonation } = useAuthStore();
 
   const currentRole = user?.role;
 
-  // Флаги для удобства
+  // Роли
+  const isPlatformAdmin = currentRole === 'PLATFORM_ADMIN';
   const isAdmin = currentRole === 'ADMIN';
   const isTenantVisitor = currentRole === 'TENANT_VISITOR';
   const isHead = currentRole === 'HEAD_OF_DEPARTMENT';
   const isDeptVisitor = currentRole === 'DEPT_VISITOR';
 
-  // База: то, что видят все (Календарь и Отчёты)
+  // Базовое меню тенанта (Календарь + Отчёты) — для всех тенантных ролей
   let menuItems: any[] = [
     { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },
     { key: '/reports', icon: <BarChartOutlined />, label: 'Отчёты' },
   ];
 
-  // То, что видят Админ и Визитор тенанта (всё, кроме управления пользователями для визитора)
+  // ADMIN / TENANT_VISITOR — расширенное меню
   if (isAdmin || isTenantVisitor) {
     menuItems = [
       { key: '/dashboard', icon: <DashboardOutlined />, label: 'Дашборд' },
@@ -53,7 +57,7 @@ const MainLayout = () => {
       { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },
       { key: '/reports', icon: <BarChartOutlined />, label: 'Отчёты' },
       { key: '/shift-patterns', icon: <ClockCircleOutlined />, label: 'Шаблоны смен' },
-      { key: '/workstations', icon: <SettingOutlined />, label: 'Рабочие места' },
+      { key: '/workstations', icon: <SettingOutlined />, label: 'Рабочие станции' },
       {
         key: 'dictionaries',
         icon: <BookOutlined />,
@@ -66,24 +70,23 @@ const MainLayout = () => {
       },
     ];
 
-    // Настройки тенанта и Пользователи доступны только админу тенанта
     if (isAdmin) {
       menuItems.push({ key: '/settings', icon: <SettingOutlined />, label: 'Настройки' });
       menuItems.push({ key: '/users', icon: <UserOutlined />, label: 'Пользователи' });
     }
   }
 
-  // Глава департамента (Head of Department)
+  // HEAD_OF_DEPARTMENT — только свой отдел
   if (isHead) {
     menuItems = [
       { key: '/employees', icon: <TeamOutlined />, label: 'Мои сотрудники' },
       { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },
       { key: '/reports', icon: <BarChartOutlined />, label: 'Отчёты' },
-      { key: '/users', icon: <UserOutlined />, label: 'Пользователи' }, // Только своего отдела
+      { key: '/users', icon: <UserOutlined />, label: 'Пользователи' },
     ];
   }
 
-  // Визитор департамента (DEPT_VISITOR)
+  // DEPT_VISITOR — минимальный набор
   if (isDeptVisitor) {
     menuItems = [
       { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь' },
@@ -91,10 +94,12 @@ const MainLayout = () => {
     ];
   }
 
-  // Платформенный админ видит только управление тенантами (пока пусто)
-  if (currentRole === 'PLATFORM_ADMIN') {
+  // PLATFORM_ADMIN — только дашборд платформы (но при имперсонации видит меню тенанта)
+  if (isPlatformAdmin) {
     menuItems = [
-      { key: '/dashboard', icon: <DashboardOutlined />, label: 'Тенанты платформы' },
+      { key: '/platform-dashboard', icon: <DashboardOutlined />, label: 'Дашборд платформы' },
+      { key: '/platform-logs', icon: <FileTextOutlined />, label: 'Логи действий' },
+      { key: '/platform-metrics', icon: <LineChartOutlined />, label: 'Метрики' },
     ];
   }
 
@@ -103,6 +108,12 @@ const MainLayout = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleExitImpersonation = () => {
+    exitImpersonation();
+    message.success('Выход из тенанта');
+    navigate('/platform-dashboard');
   };
 
   return (
@@ -129,25 +140,47 @@ const MainLayout = () => {
 
         <Layout style={{ background: '#1e1e2f' }}>
           <Header style={{ background: '#2d2d3f', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #3d3d4f' }}>
-            <Button
-                type="text"
-                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                onClick={() => setCollapsed(!collapsed)}
-                style={{ fontSize: 16, width: 64, height: 64, color: 'white' }}
-            />
+            <Space>
+              <Button
+                  type="text"
+                  icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                  onClick={() => setCollapsed(!collapsed)}
+                  style={{ fontSize: 16, width: 64, height: 64, color: 'white' }}
+              />
+              {isImpersonating && (
+                  <Tag color="orange" style={{ marginLeft: 8 }}>
+                    Имперсонация: {user?.tenantId?.slice(0, 8)}
+                  </Tag>
+              )}
+            </Space>
 
             <Space>
+              {isImpersonating && (
+                  <Button
+                      icon={<ArrowLeftOutlined />}
+                      onClick={handleExitImpersonation}
+                      type="primary"
+                      danger
+                      size="small"
+                  >
+                    Выйти из тенанта
+                  </Button>
+              )}
               <Badge dot>
                 <Avatar style={{ background: '#2E8B57' }}>
                   {user?.username?.[0]?.toUpperCase() || 'U'}
                 </Avatar>
               </Badge>
               <Dropdown menu={{
-                items: [{ key: 'logout', icon: <LogoutOutlined />, label: 'Выйти', onClick: handleLogout }],
+                items: [
+                  { key: 'logout', icon: <LogoutOutlined />, label: isImpersonating ? 'Выйти полностью' : 'Выйти', onClick: handleLogout },
+                ],
               }} placement="bottomRight">
                 <Space style={{ color: 'white', cursor: 'pointer' }}>
                   <span>{user?.username}</span>
-                  <Tag color="blue">{currentRole}</Tag>
+                  <Tag color={isImpersonating ? 'orange' : 'blue'}>
+                    {isImpersonating ? 'ADMIN (imp.)' : currentRole}
+                  </Tag>
                 </Space>
               </Dropdown>
             </Space>

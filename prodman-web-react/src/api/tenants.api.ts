@@ -1,6 +1,6 @@
 import apiClient from './client';
 import type { PageResponse } from './employees.api';
-import type { TenantPlan, TenantStatus } from '../types/auth.types';
+import type { AuthResponse, TenantPlan, TenantStatus } from '../types/auth.types';
 
 export interface Tenant {
     id: string;
@@ -17,5 +17,10 @@ export const tenantsApi = {
     getAll: (page = 0, size = 50): Promise<PageResponse<Tenant>> =>
         apiClient
             .get('/user-service/api/v1/tenants', { params: { page, size } })
+            .then((res) => res.data),
+
+    impersonate: (tenantId: string): Promise<AuthResponse> =>
+        apiClient
+            .post(`/user-service/api/v1/tenants/${tenantId}/impersonate`)
             .then((res) => res.data),
 };

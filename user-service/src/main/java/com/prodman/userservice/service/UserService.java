@@ -34,10 +34,7 @@ public class UserService {
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
-
-    // ==========================================
-    // Проверка прав по иерархии ролей
-    // ==========================================
+    private final AuditService auditService;
 
     private Role currentRole() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -60,14 +57,15 @@ public class UserService {
                 .orElse(null);
     }
 
+    private String currentUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth == null ? null : auth.getName();
+    }
+
     private UUID currentUserId() {
         return JwtAuthenticationFilter.currentUserId();
     }
 
-    /**
-     * Правило: роль может создать/назначить себе подобного или ниже по иерархии.
-     * PLATFORM_ADMIN назначать нельзя никому.
-     */
     private void checkCanAssignRole(Role target) {
         Role current = currentRole();
         if (current == null) {
@@ -82,11 +80,6 @@ public class UserService {
         }
     }
 
-    /**
-     * Может ли текущий пользователь управлять пользователем с ролью target
-     * (отзыв роли). То же правило, что и назначение, но строже:
-     * нельзя управлять пользователем с такой же ролью (>=).
-     */
     private void checkCanManageRole(Role target) {
         Role current = currentRole();
         if (current == null) {
@@ -101,10 +94,6 @@ public class UserService {
         }
     }
 
-    // ==========================================
-    // CRUD пользователей
-    // ==========================================
-
     @Transactional
     public UserResponse register(RegisterRequest req) {
         UUID tenantId = TenantContext.require();
@@ -112,7 +101,6 @@ public class UserService {
 
         checkCanAssignRole(role);
 
-        // departmentId обязателен для ролей, привязанных к департаменту
         if ((role == Role.HEAD_OF_DEPARTMENT || role == Role.DEPT_VISITOR)
                 && req.getDepartmentId() == null) {
             throw new CustomException.BadRequest(
@@ -137,7 +125,20 @@ public class UserService {
                 .createdBy(currentUserId())
                 .createdByRole(currentRole())
                 .build();
-        return userMapper.toResponse(userRepository.save(user));
+
+        User saved = userRepository.save(user);
+
+        auditService.record(
+                tenantId,
+                currentUserId(),
+                currentUsername(),
+                "CREATE_USER",
+                "user:" + saved.getUsername(),
+                clientIp(),
+                "{\"role\":\"" + role.name() + "\"}"
+        );
+
+        return userMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -154,14 +155,6 @@ public class UserService {
         return userMapper.toResponse(user);
     }
 
-    /**
-     * Удаление по правилам:
-     *  1. Нельзя удалить себя.
-     *  2. Сидовые пользователи (createdBy = null) — неудаляемы.
-     *  3. Созданные PLATFORM_ADMIN — неудаляемы из тенанта.
-     *  4. Создатель может удалить своего пользователя (при условии, что роль удаляемого <= своей).
-     *  5. Остальные — 403.
-     */
     @Transactional
     public void delete(UUID id) {
         UUID tenantId = TenantContext.require();
@@ -182,15 +175,20 @@ public class UserService {
             throw new CustomException.Forbidden("Only creator can delete this user");
         }
 
-        // Дополнительно: роль удаляемого должна быть строго ниже текущей
         checkCanManageRole(user.getRole());
+
+        auditService.record(
+                tenantId,
+                me,
+                currentUsername(),
+                "DELETE_USER",
+                "user:" + user.getUsername(),
+                clientIp(),
+                null
+        );
 
         userRepository.delete(user);
     }
-
-    // ==========================================
-    // Временные роли
-    // ==========================================
 
     @Transactional
     public UserResponse assignTempRole(UUID userId, Role role, LocalDateTime validUntil) {
@@ -221,6 +219,17 @@ public class UserService {
         userRoleRepository.save(tempRole);
         user.getTempRoles().add(tempRole);
 
+        auditService.record(
+                tenantId,
+                currentUserId(),
+                currentUsername(),
+                "ASSIGN_TEMP_ROLE",
+                "user:" + user.getUsername(),
+                clientIp(),
+                "{\"role\":\"" + role.name() + "\",\"validUntil\":"
+                        + (validUntil != null ? "\"" + validUntil + "\"" : "null") + "}"
+        );
+
         return userMapper.toResponse(user);
     }
 
@@ -235,5 +244,25 @@ public class UserService {
 
         userRoleRepository.deleteByUserIdAndRole(userId, role);
         user.getTempRoles().removeIf(ur -> ur.getRole() == role);
+
+        auditService.record(
+                tenantId,
+                currentUserId(),
+                currentUsername(),
+                "REVOKE_TEMP_ROLE",
+                "user:" + user.getUsername(),
+                clientIp(),
+                "{\"role\":\"" + role.name() + "\"}"
+        );
+    }
+
+    private String clientIp() {
+        var attrs = (org.springframework.web.context.request.ServletRequestAttributes)
+                org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        if (attrs == null) return null;
+        var req = attrs.getRequest();
+        String xff = req.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
+        return req.getRemoteAddr();
     }
 }

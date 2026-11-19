@@ -1,97 +1,155 @@
 # ProdMan — Production Manager
 
-SaaS-приложение для управления производством. Каждый **клиент** (организация-арендатор) получает свой **личный кабинет**, в котором самостоятельно управляет своими данными: сотрудниками, отделами, должностями, рабочими станциями, расписаниями и тестами.
+SaaS-приложение для управления производством. 
+Каждый **клиент** (организация-арендатор) получает свой **личный кабинет** с сотрудниками, отделами, должностями, станциями, расписаниями и тестами.
 
 ## Что делает приложение
 
-- Расстановка сотрудников по рабочим станциям на основе их квалификации.
-- Расчёт рабочих часов за месяц, включая отдельный учёт ночных часов.
-- Ведение справочников (сотрудники, отделы, должности, станции, квалификации).
+- Расстановка сотрудников по рабочим станциям на основе квалификации.
+- Расчёт рабочих часов за месяц, отдельно — ночных.
+- Справочники (сотрудники, отделы, должности, станции, квалификации).
 - Тесты квалификации сотрудников.
+- Управление клиентами платформы (superadmin) + имперсонация в контекст тенанта.
 
-Данные одного клиента **полностью изолированы** от данных других клиентов.
+Данные одного клиента **полностью изолированы** от других.
 
 ## Модель работы
 
-- **Клиент (tenant / организация)** — регистрируется в системе, получает изолированный личный кабинет.
-- **Пользователи клиента** — администратор клиента, менеджер производства. Имеют роли внутри своей организации.
-- **Суперадмин платформы** — управляет клиентами на уровне платформы (создание, блокировка), не видит бизнес-данные клиентов без явной необходимости.
+- **Клиент (tenant / организация)** — регистрируется в системе, получает изолированный кабинет.
+- **Пользователи клиента** — роли внутри организации (см. «Роли и иерархия»).
+- **PLATFORM_ADMIN** — суперадмин платформы (`tenant_id = NULL`). Управляет тенантами, видит статистику, может имперсонироваться в тенант.
 
 Все бизнес-сущности принадлежат клиенту: у каждой есть `tenant_id`.
+
+## Роли и иерархия (`Role.java` → `level()`)
+
+| Роль | Уровень | Описание |
+|---|---|---|
+| PLATFORM_ADMIN | 0 | Админ платформы (вне иерархии тенанта) |
+| ADMIN | 100 | Полный доступ в тенанте |
+| HEAD_OF_DEPARTMENT | 80 | Управляет своим департаментом |
+| TENANT_VISITOR | 60 | Видит весь тенант, не меняет |
+| DEPT_VISITOR | 40 | Видит свой департамент |
+| VISITOR | 20 | Демо-доступ |
+| ANALYST_1/2 | 0 | Заглушки |
+
+**Правило:** роль может создать/назначить себе подобного или ниже (`target.level() <= current.level()`). `PLATFORM_ADMIN` назначать нельзя никому. Управление (отзыв, удаление) строже: `target.level() < current.level()`.
 
 ## Стек
 
 ### Backend
 - Java 21, Spring Boot 3
-- PostgreSQL (database-per-service, shared schema + tenant_id внутри)
-- Redis (кэш/сессии)
+- PostgreSQL (database-per-service, shared schema + tenant_id)
 - Liquibase (миграции)
-- JWT (auth; в токене — userId + tenantId + role + tenantStatus)
-- Сервисы: `user-service`, `employee-service`, `work-calendar`, `test-service`, `workstation`, `prodman-api-gateway`
+- JWT (auth; в токене — userId, tenantId, roles[], tenantStatus, departmentId)
+- Сервисы: `user-service` (8081), `employee-service` (8084), `workstation` (8083), `work-calendar` (8082), `test-service` (8085), `prodman-api-gateway` (8888)
 
 ### Frontend
 - React 18, TypeScript, Vite
-- Ant Design, axios, react-router-dom, zustand
-- Личный кабинет клиента (одно SPA, разные роли/видимость)
+- Ant Design 6, axios, react-router-dom, zustand
+- Одно SPA: разные роли → разные меню (`PLATFORM_ADMIN` → дашборд платформы; остальные → кабинет тенанта)
 
 ### Инфраструктура
 - Docker / docker-compose
 - Helm (в `prodman-helm/`)
+- Порты БД: 54322 (users), 54344 (workstations), 54355 (employees), 54333 (calendar), 54366 (tests)
 
 ## Архитектура
 
-Микросервисы за API Gateway (Spring Cloud Gateway). Каждый сервис — отдельная БД.
+Микросервисы за API Gateway. У каждого — своя БД.
 
-- **user-service** — организации (tenants), пользователи клиента, роли, JWT, конфиг смен.
-- **employee-service** — сотрудники, отделы, должности, квалификации клиента.
-- **work-calendar** — расписания, смены, назначения на оборудование.
-- **test-service** — тесты квалификации.
-- **workstation** — рабочие станции.
-- **prodman-api-gateway** — маршрутизация, JWT-фильтр (в т.ч. tenantId), rate-limit, логирование.
+- **user-service** — организации, пользователи, роли, JWT, временные роли, аудит создания. Публичные эндпоинты: `/api/v1/auth/**`, `/api/v1/users/**`, `/api/v1/tenants/**` (только PLATFORM_ADMIN).
+- **employee-service** — сотрудники, отделы, должности, квалификации, `tenant_settings`.
+- **workstation** — станции + `workstation_qualifications` (M:N).
+- **work-calendar** — расписания, смены, слоты, ref-кэш квалификаций.
+- **test-service** — тесты квалификации (пока НЕ мультитенантный).
+- **prodman-api-gateway** — маршрутизация + JWT-фильтр.
 
-Фронт: `prodman-web-react/` (SPA). Desktop-версия (`prodman-desktop/`) удалена — переход на веб-интерфейс завершён.
+Фронт: `prodman-web-react/`.
 
 ## Мультитенантность
 
-Выбран подход **shared database, shared schema, tenant_id** (см. ADR-0002). Правила:
+Подход **shared database, shared schema, tenant_id** (см. ADR-0002). Правила:
 
-1. У каждой бизнес-сущности есть колонка `tenant_id` (внешний ключ на организацию, UUID).
-2. Запросы **всегда** фильтруются по `tenant_id`. Это обеспечивается на уровне репозиториев (Spring Data + спецификации, либо Hibernate `@TenantId` / filter).
-3. `tenant_id` **никогда** не приходит в теле HTTP-запроса от клиента — только из JWT через Gateway.
-4. `tenant_id` уникален среди сущностей внутри своего тенанта: например, `employee.code` уникален в рамках `(tenant_id, code)`, а не глобально.
+1. У каждой бизнес-сущности — `tenant_id`.
+2. Запросы **всегда** фильтруются по `tenant_id`.
+3. `tenant_id` **никогда** не приходит в теле от клиента — только из JWT (через `JwtAuthenticationFilter` / `TenantFilter`).
+4. Бизнес-ключи уникальны в рамках тенанта: `(tenant_id, code)`.
 
-## Тарифы, триалы и статусы
+## Аутентификация
 
-Каждый клиент (тенант) имеет **статус** и **план**.
+- JWT HS512. Claims: `sub` (username), `userId`, `roles[]`, `tenantId`, `tenantStatus`, `departmentId`.
+- `JwtAuthenticationFilter` — парсит токен, заполняет `SecurityContext` (authorities `ROLE_*`), кладёт `userId` в `details`.
+- `TenantFilter` — читает `X-Tenant-Id` (шлёт Gateway или сам клиент в dev), кладёт в `TenantContext`.
+- `SecurityConfig`:
+  - `/api/v1/auth/**`, swagger, actuator — `permitAll`;
+  - `/api/v1/users/**` — `authenticated`;
+  - `/api/v1/tenants/**` — `hasRole('PLATFORM_ADMIN')`;
+  - остальное — `authenticated`.
+- `X-User-Role` больше не используется (удалён из фронта).
 
-### Статусы тенанта (`TenantStatus`)
-- `TRIAL` — триальный период. По умолчанию **30 календарных дней** от регистрации. Можно установить вручную.
-- `ACTIVE` — оплачен и работает.
-- `SUSPENDED` — отключён (нет оплаты, закончился триал и т.п.).
+## Тарифы, триалы, статусы
+
+### TenantStatus
+- `TRIAL` — триал (30 дней).
+- `ACTIVE` — оплачен.
+- `SUSPENDED` — отключён.
 - `CANCELLED` — расторгнут.
 
-### Планы тенанта (`TenantPlan`)
-- `FREE` — триальный доступ **ко всем** сервисам.
-- `BASIC` — платный, доступ только к: расписание/станции, сотрудники, пользователи, справочники.
-- `UNLIM` — платный, доступ ко всем сервисам.
+### TenantPlan
+- `FREE` — триал, все сервисы.
+- `BASIC` — платный (расписание/станции, сотрудники, пользователи, справочники).
+- `UNLIM` — платный, все сервисы.
 
-### Уведомления об окончании триала
-- За **5 дней** до `trial_ends_at` — уведомление.
-- За **1 день** до `trial_ends_at` — уведомление.
-- Сервис уведомлений — **отдельный сервис** (будет создан позже).
+### Уведомления и платежи
+- Уведомления (5 и 1 день до `trial_ends_at`) — отдельный сервис, позже.
+- `payment-service` — отдельный сервис, позже.
 
-### Платёжный сервис
-- **Будет отдельным сервисом** (`payment-service`). Отвечает за:
-  - приём оплат и управление подписками,
-  - продление `subscription_ends_at`,
-  - перевод тенанта в `ACTIVE` после оплаты,
-  - перевод в `SUSPENDED` при неоплате.
-- Планируется позже; в текущей модели заложены все нужные поля (`status`, `plan`, `trial_ends_at`, `subscription_ends_at`).
+### Верификация тенанта (бэклог, не блокирует MVP)
 
-### Где заложено в коде
-- Таблица `tenants` в `user-service` — с полями `status`, `plan`, `trial_ends_at`, `subscription_ends_at`.
-- В JWT — claim `tenantStatus` (используется фильтрами сервисов для быстрой проверки без сетевых вызовов).
-- В `TenantFilter` (каждый сервис) — отклонение запросов от `SUSPENDED` / `CANCELLED` тенантов.
+Проверка «реальности» организации через ИНН. Пока не реализовано, но модель заложена.
+
+**Поля в `Tenant`:**
+- `inn VARCHAR(12)` — nullable. ИНН организации (10 цифр для юрлиц, 12 для ИП).
+- `verification_status VARCHAR(32) NOT NULL DEFAULT 'UNVERIFIED'` — `UNVERIFIED | PENDING | VERIFIED | REJECTED`.
+- `verified_at TIMESTAMPTZ` — nullable. Когда подтверждено.
+- `verified_by UUID` — nullable. Кто подтвердил (PLATFORM_ADMIN или система через ФНС).
+
+**Логика:**
+- При регистрации тенанта — `verification_status = UNVERIFIED`.
+- Триал работает, но с ограничениями для `UNVERIFIED`: например, нельзя пригласить > 5 пользователей, нельзя выгружать отчёты в CSV.
+- `PLATFORM_ADMIN` может подтвердить вручную (кнопка в `PlatformDashboard` → «Подтвердить») или отклонить (`REJECTED`).
+- Позже — автоматическая проверка через ФНС API (запрос по ИНН → сверка названия/ОГРН). Если ФНС недоступен — ручной режим.
+
+**UI:**
+- `PlatformDashboard`: колонка «Верификация» (`UNVERIFIED` / `PENDING` / `VERIFIED` / `REJECTED` с цветными тегами) + кнопка «Подтвердить / Отклонить» для `PLATFORM_ADMIN`.
+- В кабинете тенанта: баннер «Верифицируйте организацию, чтобы снять ограничения» с формой ввода ИНН и загрузкой документов.
+
+**API (план):**
+- `POST /api/v1/tenants/{id}/verify` — `PLATFORM_ADMIN` подтверждает.
+- `POST /api/v1/tenants/{id}/reject` — `PLATFORM_ADMIN` отклоняет.
+- `PUT /api/v1/tenants/{id}/inn` — тенант вводит ИНН (сам).
+- `GET /api/v1/tenants/{id}/verification` — статус.
+
+**Не сейчас.** Сначала — регистрация, метрики, демо-страницы.
+
+## Аудит создания пользователей (`created_by`)
+
+- `users.created_by UUID` — кто создал.
+- `users.created_by_role VARCHAR(32)` — роль создателя на момент создания.
+- Правила удаления:
+  - нельзя удалить себя;
+  - `created_by = null` (сид / платформа) → 403 «System user cannot be deleted»;
+  - `created_by_role = PLATFORM_ADMIN` → 403;
+  - `created_by != currentUserId` → 403 «Only creator can delete this user»;
+  - роль удаляемого должна быть **строго ниже** текущей.
+
+## Имперсонация (в разработке, план)
+
+`PLATFORM_ADMIN` из дашборда тенантов может «войти» в тенант:
+- `POST /api/v1/tenants/{id}/impersonate` → `AuthResponse` с `role=ADMIN`, `tenantId=<id>`.
+- На фронте два слота в `localStorage`: `accessToken` (текущий) и `platformAccessToken` (всегда платформенный).
+- «Выйти из тенанта» → `accessToken = platformAccessToken`, редирект на `/platform-dashboard`.
 
 ## Структура репозитория
 
@@ -100,44 +158,50 @@ SaaS-приложение для управления производством
 - `work-calendar/` — расписания и смены
 - `test-service/` — тесты
 - `workstation/` — рабочие станции
-- `prodman-api-gateway/` — API Gateway
+- `prodman-api-gateway/` — Gateway
 - `prodman-web-react/` — React SPA
 - `prodman-helm/` — Helm-чарты
-- `docker-compose.yml` — локальный запуск инфраструктуры
-- `run_*.bat` — скрипты запуска сервисов (Windows)
-- `docs/` — документация (ADR, архитектура, схемы БД)
+- `docker-compose.yml` — локальная инфраструктура
+- `run_*.bat` — скрипты запуска (Windows)
+- `docs/` — ADR, архитектура, схемы БД
 
 ## Текущий этап
 
-Календарь: расстановка сотрудников по станкам с проверкой квалификации.
+Календарь: расстановка сотрудников по станкам с проверкой квалификации + отчёты.
 
 Сделано:
-- Справочники отделов, должностей, квалификаций, станков, сотрудников — в `employee-service` / `workstation`.
-- Мультитенантность во всех сервисах (`Tenant`, `tenant_id`, JWT с `tenantId` / `tenantStatus`).
-- `workstation-service`: у станка набор квалификаций (`workstation_qualifications`, M:N). Одна из них выбирается при создании слота.
-- `work-calendar`: слот хранит `required_qualification_id`. При назначении сотрудника — проверка: если квалификация не совпадает → 409 + override (с причиной). Ref-кэш `employee_qualifications_ref` синкается при каждом `assign` и по `POST /api/sync/all`.
-- Визуальная валидация: оранжевый слот (⚠ квал.) при mismatch, оранжевый день в месячной сетке (`hasQualificationMismatch`).
+- Справочники (employee-service / workstation).
+- Мультитенантность во всех сервисах, кроме test-service.
+- `workstation_qualifications` (M:N), `required_qualification_id` в слоте.
+- 409 QUALIFICATION_MISMATCH + override (причина).
+- Ref-кэш `employee_qualifications_ref` + `POST /api/sync/all`.
+- Визуальная валидация: оранжевый слот/день при mismatch.
+- `tenant_settings`: 3 коэффициента (base/weekend/night) + month_crossing_mode.
+- Отчёт «Часы по сотрудникам» + CSV.
+- JWT-фильтр, `SecurityContext`, иерархия ролей.
+- Аудит `created_by` / `created_by_role`.
+- `TenantController` (`GET /api/v1/tenants`).
+- Фронт: `PlatformDashboard.tsx` (статистика + список тенантов + заглушки логов/метрик), `UsersList.tsx` с иерархией и колонкой «Создатель».
 
-Далее: ночные часы, расчёт часов за месяц (сначала по сотрудникам, потом по оборудованию).
+Далее:
+1. Имперсонация (`/tenants/{id}/impersonate` + фронт).
+2. Регистрация тенантов через UI.
+3. Уведомления о триале (`notification-service`).
+4. `payment-service`.
+5. test-service — мультитенантность.
+6. Код-сплиттинг фронта, кастомные 401/403 JSON.
 
 ## Как передать контекст в новый чат
 
 1. Приложить `PROJECT.md`.
-2. Приложить `docs/architecture.md` (Mermaid-диаграмма).
-3. Приложить нужный ADR из `docs/adr/`, если вопрос про конкретное решение.
-4. Приложить файлы, которые относятся к задаче (не весь репо).
+2. Приложить `docs/architecture.md`.
+3. Приложить нужный ADR из `docs/adr/`.
+4. Приложить файлы, относящиеся к задаче (не весь репо).
 
 ## Соглашения
 
-- Коммиты: `feat(scope): ...`, `fix(scope): ...`, `chore(scope): ...`
-- Ветки: `<feature>_<short_desc>` (например `work_calendar_improvement`)
-- API-контракты: держать в `docs/api/` (заведём позже)
-- Схемы БД: `docs/db/<service>.dbml`
-
-### JPA-сущности
-
-- **Не используем `@Data`** на `@Entity` (генерирует `equals`/`hashCode`/`toString` по всем полям — опасно для LAZY-связей, `id`, рекурсии).
-- Разбиваем: `@Getter`, `@Setter`, `@NoArgsConstructor`, `@AllArgsConstructor`, `@Builder`.
-- `@ToString(onlyExplicitlyIncluded = true)` + `@ToString.Include` **только на безопасных полях** (id, code, name). Никогда — на паролях, коллекциях, LAZY-связях.
-- **Не генерируем `equals`/`hashCode`** автоматически. Если нужно — по `id` с проверкой на `null`, `hashCode` — по классу (см. ADR-0003).
-- `id`, `tenantId`, `createdAt` — неизменяемы после создания (`updatable = false` в `@Column`).
+- Коммиты: `feat(scope): ...`, `fix(scope): ...`, `chore(scope): ...`.
+- Ветки: `<feature>_<short_desc>`.
+- API-контракты — в `docs/api/`.
+- Схемы БД — `docs/db/<service>.dbml`.
+- **JPA:** не использовать `@Data` на `@Entity`. Только `@Getter`, `@Setter`, `@NoArgsConstructor`, `@AllArgsConstructor`, `@Builder`. `@ToString(onlyExplicitlyIncluded = true)` — только на безопасных полях. `equals/hashCode` — не генерировать (identity по умолчанию, при необходимости — вручную по `id`). См. ADR-0003.

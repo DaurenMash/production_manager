@@ -2,10 +2,11 @@
 // Схема БД сервиса рабочих станций.
 // Мультитенантность: каждая сущность принадлежит тенанту (tenant_id).
 // См. ADR-0002.
+// Идентификаторы — UUID v7 (Hibernate @UuidGenerator(style = TIME)).
 
 Project prodman_workstation {
   database_type: 'PostgreSQL'
-  Note: 'Рабочие станции. Database-per-service. Shared schema + tenant_id.'
+  Note: 'Рабочие станции + M:N квалификаций. Database-per-service. Shared schema + tenant_id.'
 }
 
 // -----------------------------
@@ -26,31 +27,44 @@ Table workstations {
   name            varchar(255) [not null]
   description     text
   is_active       boolean      [not null, default: true]
-  created_by      uuid         [note: 'user_id из user-service']
+  created_by      uuid         [note: 'user-service.users.id — кто создал']
   created_at      timestamptz  [not null, default: `now()`]
   updated_at      timestamptz  [not null, default: `now()`]
 
   indexes {
-    (tenant_id, code)             [unique, name: 'ux_workstations_tenant_code']
-    (tenant_id, department_id)    [name: 'ix_workstations_tenant_department']
-    (tenant_id, is_active)        [name: 'ix_workstations_tenant_active']
+    (tenant_id, code)          [unique, name: 'ux_workstations_tenant_code']
+    (tenant_id, department_id) [name: 'ix_workstations_tenant_department']
+    (tenant_id, is_active)     [name: 'ix_workstations_tenant_active']
   }
 }
 
 // -----------------------------
 // Workstation ↔ Qualification (M:N)
 // -----------------------------
-// Набор квалификаций, которые станок принимает. Менеджер выбирает
-// одну из них при создании слота.
+// Набор квалификаций, которые станок принимает.
+// Менеджер выбирает одну из них при создании слота (required_qualification_id).
 Table workstation_qualifications {
   id                uuid         [pk]
-  tenant_id         uuid         [not null]
+  tenant_id         uuid         [not null, ref: > tenants_ref.id]
   workstation_id    uuid         [not null, ref: > workstations.id]
   qualification_id  uuid         [not null, note: 'Логическая ссылка на employee-service.qualifications']
   created_at        timestamptz  [not null, default: `now()`]
 
   indexes {
-    (tenant_id, workstation_id)                         [name: 'idx_ws_qual_ws']
-    (tenant_id, workstation_id, qualification_id)       [unique, name: 'uq_ws_qual']
+    (tenant_id, workstation_id)                   [name: 'idx_ws_qual_ws']
+    (tenant_id, workstation_id, qualification_id) [unique, name: 'uq_ws_qual']
+    (tenant_id, qualification_id)                 [name: 'idx_ws_qual_qual']
   }
 }
+
+// -----------------------------
+// Примечания
+// -----------------------------
+// - department_id — логическая ссылка (не FK) на employee-service.departments.
+//   Целостность на уровне приложения (валидация при create/update).
+// - qualification_id — логическая ссылка (не FK) на employee-service.qualifications.
+//   При удалении квалификации в employee-service записи workstation_qualifications
+//   не удаляются автоматически; их надо чистить через /api/sync или вручную.
+// - created_by — пользователь, создавший станок (для аудита).
+// - is_active=false — станок не показывается в выборе при создании слотов,
+//   но существующие слоты остаются валидными.

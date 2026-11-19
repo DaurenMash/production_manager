@@ -21,8 +21,8 @@ public class RegisterTenantRequest {
 
     @NotBlank
     @Size(min = 2, max = 64)
-    @Pattern(regexp = "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
-             message = "Slug: строчные латинские буквы, цифры и дефис; не начинается и не заканчивается дефисом")
+    @Pattern(regexp = "^[a-zA-Z0-9_-]+$",
+            message = "Slug: латиница (любой регистр), цифры, дефис (-) и нижний дефис (_)")
     private String tenantSlug;
 
     @NotBlank

@@ -69,10 +69,24 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        include: health,info,metrics,prometheus,gateway
   endpoint:
+    health:
+      show-details: always
     gateway:
       enabled: true
+  metrics:
+    tags:
+      application: api-gateway
+    distribution:
+      percentiles-histogram:
+        [http.server.requests]: true
+      slo:
+        [http.server.requests]: 100ms, 500ms, 1s, 2s, 5s
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 springdoc:
   swagger-ui:

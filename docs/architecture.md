@@ -1,20 +1,20 @@
 # Архитектура ProdMan
 
-ProdMan — SaaS-приложение: каждая организация-клиент работает в своём изолированном личном кабинете. Все бизнес-данные принадлежат клиенту и разделяются по `tenant_id`.
+ProdMan — SaaS-приложение: каждая организация-клиент работает в изолированном личном кабинете. Все бизнес-данные принадлежат клиенту и разделяются по `tenant_id`. Отдельно — `PLATFORM_ADMIN` (вне тенантов), который управляет клиентами платформы.
 
 ## Уровень 1. Контекст (C4 Context)
 
 ```mermaid
 flowchart LR
-    ClientUser([Пользователь клиента<br/>админ или менеджер])
-    SuperAdmin([Суперадмин платформы])
+    ClientUser([Пользователь клиента<br/>ADMIN / HEAD / VISITOR])
+    SuperAdmin([PLATFORM_ADMIN<br/>админ платформы])
 
     ProdMan[ProdMan<br/>SaaS-платформа]
     DB[(PostgreSQL)]
     Redis[(Redis)]
 
     ClientUser -->|личный кабинет| ProdMan
-    SuperAdmin -->|управление клиентами| ProdMan
+    SuperAdmin -->|дашборд платформы| ProdMan
 
     ProdMan --> DB
     ProdMan --> Redis
@@ -24,7 +24,7 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    Browser([Браузер клиента])
+    Browser([Браузер])
 
     subgraph Front["Frontend"]
         SPA[React SPA<br/>prodman-web-react]
@@ -32,11 +32,11 @@ flowchart TB
 
     subgraph Back["Backend (микросервисы)"]
         GW[API Gateway<br/>prodman-api-gateway<br/>JWT + tenantId]
-        US[user-service<br/>tenants + users]
-        ES[employee-service]
-        WC[work-calendar]
+        US[user-service<br/>tenants + users + roles]
+        ES[employee-service<br/>employees + dictionaries]
+        WC[work-calendar<br/>schedules + slots]
         TS[test-service]
-        WS[workstation]
+        WS[workstation<br/>workstations + quals]
     end
 
     subgraph Data["Хранилища (database-per-service)"]
@@ -67,26 +67,69 @@ flowchart TB
     US --- RDS
 ```
 
-**Ключевое:** Gateway извлекает `tenantId` из JWT и прокидывает в заголовке (`X-Tenant-Id`) во внутренние сервисы. Сервисы фильтруют данные по `tenantId`.
+**Ключевое:** Gateway извлекает `tenantId` из JWT и прокидывает `X-Tenant-Id` во внутренние сервисы. `PLATFORM_ADMIN` не имеет `tenantId`, поэтому его запросы идут без `X-Tenant-Id`, а `/api/v1/tenants/**` разрешён только ему.
 
-## Уровень 3. Компоненты (пример: employee-service)
+## Уровень 3. Компоненты user-service
 
 ```mermaid
 flowchart LR
-    subgraph ES["employee-service"]
-        Filter[TenantFilter<br/>из X-Tenant-Id]
-        EController[Controllers<br/>Employee / Department / Position]
-        EService[Services<br/>EmployeeService / DepartmentService / PositionService]
-        ERepo[Repositories<br/>Spring Data JPA<br/>всегда с tenantId]
-        EMapper[DTO / Mapping]
+    subgraph US["user-service"]
+        JwtFilter[JwtAuthenticationFilter<br/>Bearer → SecurityContext]
+        TenantFilter[TenantFilter<br/>X-Tenant-Id → TenantContext]
+        AC[AuthController<br/>/api/v1/auth]
+        UC[UserController<br/>/api/v1/users]
+        TC[TenantController<br/>/api/v1/tenants]
+        AS[AuthService]
+        USvc[UserService<br/>role hierarchy, createdBy, delete rules]
+        TSvc[TenantService<br/>list + impersonate]
+        Repos[Repositories<br/>UserRepository, TenantRepository, UserRoleRepository]
     end
 
-    EController --> Filter
-    EController --> EService
-    EService --> ERepo
-    EService --> EMapper
-    ERepo --> PG[(PostgreSQL<br/>prodman_employees)]
+    JwtFilter --> AC
+    JwtFilter --> UC
+    JwtFilter --> TC
+    TenantFilter --> UC
+    AC --> AS
+    UC --> USvc
+    TC --> TSvc
+    USvc --> Repos
+    TSvc --> Repos
+    Repos --> PG[(PostgreSQL<br/>prodman_users)]
 ```
+
+## Роли и иерархия
+
+```mermaid
+flowchart TD
+    PA[PLATFORM_ADMIN<br/>level 0, tenant_id=NULL]
+    AD[ADMIN<br/>level 100]
+    HD[HEAD_OF_DEPARTMENT<br/>level 80]
+    TV[TENANT_VISITOR<br/>level 60]
+    DV[DEPT_VISITOR<br/>level 40]
+    V[VISITOR<br/>level 20]
+
+    PA -.->|управляет| AD
+    AD --> HD
+    HD --> TV
+    TV --> DV
+    DV --> V
+
+    classDef plat fill:#7a2a7a,stroke:#fff,color:#fff
+    classDef admin fill:#c0392b,stroke:#fff,color:#fff
+    classDef head fill:#e67e22,stroke:#fff,color:#fff
+    classDef vis fill:#3498db,stroke:#fff,color:#fff
+    classDef dept fill:#16a085,stroke:#fff,color:#fff
+    classDef demo fill:#555,stroke:#fff,color:#fff
+
+    class PA plat
+    class AD admin
+    class HD head
+    class TV vis
+    class DV dept
+    class V demo
+```
+
+**Правило назначения:** `target.level() <= current.level()`. `PLATFORM_ADMIN` назначать нельзя. Удаление/отзыв — `target.level() < current.level()`.
 
 ## Модель мультитенантности
 
@@ -111,75 +154,76 @@ flowchart LR
 ```
 
 Правила:
-- У каждой бизнес-сущности — колонка `tenant_id`.
-- `tenant_id` **всегда** приходит из JWT, а не из тела запроса.
-- Уникальность составная: например, `(tenant_id, code)` для сотрудников, отделов, станций.
+- У каждой бизнес-сущности — `tenant_id`.
+- `tenant_id` приходит **только из JWT** (через `X-Tenant-Id` от Gateway) или из `TenantContext` в user-service.
+- Уникальность — составная: `(tenant_id, code)`.
 - Пользователь видит только данные своего тенанта.
 
-Детали — в [ADR-0002](./adr/0002-multi-tenancy.md).
+Подробнее — [ADR-0002](./adr/0002-multi-tenancy.md).
 
 ## Квалификации: станок ↔ сотрудник
 
-Квалификации — это отдельная сущность в `employee-service`, которая
-описывает, что именно умеет сотрудник и что именно требуется для работы
-на станке. Одна квалификация может требовать несколько слотов на одном
-станке — например, на станке «Фишер» нужен 1 печатник и 2 помощника,
-это три слота, у каждого своя `required_qualification_id`.
+```mermaid
+flowchart LR
+    Q[employee-service.qualifications]
+    EQ[employee_qualifications<br/>M:N сотрудник-квал]
+    WQ[workstation_qualifications<br/>M:N станок-квал]
+    SS[shift_slots.required_qualification_id]
 
-Схема:
-employee-service.qualifications
-│
-├── employee-service.employee_qualifications (M:N)
-│ └── кто какую квалификацию имеет (с уровнем)
-│
-└── workstation-service.workstation_qualifications (M:N)
-└── какие квалификации принимает станок
+    Q --> EQ
+    Q --> WQ
+    WQ --> SS
+```
 
-work-calendar.shift_slots.required_qualification_id → одна из квалификаций станка
-
-При назначении сотрудника (`work-calendar`):
-
-1. Слот имеет `required_qualification_id` (одна из квалификаций станка) — или `null` (без требований).
-2. `work-calendar` сверяет `employee_qualifications_ref` (локальный кэш).
-3. Не совпало → **409 QUALIFICATION_MISMATCH** + модалка override на фронте.
+Поток:
+1. `shift_slot` хранит `required_qualification_id` (одну из квалификаций станка) или `null`.
+2. При `assign` `work-calendar` сверяет `employee_qualifications_ref` (локальный кэш).
+3. Не совпало → **409 QUALIFICATION_MISMATCH** + модалка override.
 4. Override → `qualification_overridden = true`, `qualification_override_reason` сохраняется.
-5. Визуально: слот и день оранжевые (`qualificationMismatch = true` — независимо от override).
+5. Визуально: слот и день оранжевые (`qualificationMismatch = true`) — независимо от override.
 
-Синк `employee_qualifications_ref`:
-- при каждом `assign` (для конкретного сотрудника),
-- по `POST /api/sync/all` (все сотрудники тенанта).
+Синк `employee_qualifications_ref`: при каждом `assign` + `POST /api/sync/all`.
 
-Детали:
-- [docs/db/workstation.dbml](./db/workstation.dbml) — `workstation_qualifications`
-- [docs/db/work-calendar.dbml](./db/work-calendar.dbml) — `employee_qualifications_ref`, `shift_slots`
+## Потоки аутентификации
 
+### Логин тенантного пользователя
+1. `POST /api/v1/auth/login` с `{ slug, username, password }`.
+2. `AuthService` ищет `(tenant, username)`, проверяет пароль, статус тенанта.
+3. Собирает `activeRoles` = основная + временные (активные на сейчас).
+4. `JwtService.generateToken` → access (24ч) + refresh (7д).
+5. `AuthResponse` содержит `role` (основная), `tenantId`, `tenantSlug`, `tenantStatus`, `tenantPlan`, `departmentId`.
+
+### Логин PLATFORM_ADMIN
+1. `POST /api/v1/auth/login` с `{ username, password }` (без slug).
+2. `findByTenantIdIsNullAndUsername` → `PLATFORM_ADMIN`.
+3. Токен без `tenantId`, без `tenantStatus`. `AuthResponse` с пустыми `tenantId`/`tenantSlug`.
+
+### Имперсонация (план)
+1. `PLATFORM_ADMIN` открывает `/platform-dashboard`, видит список тенантов.
+2. `POST /api/v1/tenants/{id}/impersonate` → `AuthResponse` с `role=ADMIN`, `tenantId=<id>`, `tenantSlug`, `tenantStatus`, `tenantPlan`.
+3. Фронт: `localStorage.accessToken = новый`, `localStorage.platformAccessToken = старый`.
+4. Меню тенанта. «Выйти из тенанта» → восстановить `platformAccessToken`.
 
 ## Основные потоки
 
-### Регистрация клиента и вход
-1. Клиент регистрируется → `user-service` создаёт `Tenant` + первого `User` (admin тенанта).
-2. SPA → `POST /api/auth/login` через Gateway.
-3. `user-service` валидирует, выдаёт JWT (access + refresh). В токене — `userId`, `tenantId`, `role`.
-4. Gateway проверяет JWT на каждом запросе (`JwtAuthenticationFilter`) и добавляет `X-Tenant-Id` во внутренний запрос.
-5. SPA хранит токен, шлёт в заголовке `Authorization: Bearer ...`.
-
-### Расстановка сотрудников по станциям (план)
-1. SPA запрашивает список сотрудников (`employee-service`) и станций (`workstation`) — только своего тенанта.
-2. Менеджер делает назначения.
-3. Назначения сохраняются в `work-calendar` (`Schedule` / `EquipmentSchedule`) с `tenant_id`.
-4. `work-calendar` рассчитывает часы за месяц и ночные часы.
+### Расстановка сотрудников
+1. SPA запрашивает сотрудников (`employee-service`) и станции (`workstation`) — только своего тенанта.
+2. Менеджер назначает через `POST /work-calendar/api/shift-slots/{id}/assign`.
+3. `work-calendar` проверяет квалификацию + занятость, сохраняет слот.
+4. Отчёты: `GET /work-calendar/api/reports/hours/by-employee`, `/schedule`.
 
 ## Принципы
 
-- Каждый сервис — своя БД (database-per-service).
-- Мультитенантность: shared schema + `tenant_id` (см. ADR-0002).
-- Общение сервисов через REST (синхронно), позже — возможны события.
+- Database-per-service.
+- Мультитенантность: shared schema + `tenant_id` (ADR-0002).
+- REST-общение, синхронно.
 - JWT — единственный источник идентичности и `tenantId`.
-- Миграции — только через Liquibase, версионируются в `src/main/resources/db/changelog/`.
-- Фронт не знает о внутренних адресах сервисов — только Gateway.
+- Liquibase — все изменения схемы.
+- Фронт не знает внутренних адресов — только Gateway (или Vite proxy в dev).
 
 ## Связанные документы
 
-- [ADR](./adr/) — принятые решения
-- [PROJECT.md](../PROJECT.md) — общее описание
-- [README.md](../README.md) — быстрый старт
+- [ADR](./adr/)
+- [PROJECT.md](../PROJECT.md)
+- [README.md](../README.md)
+```

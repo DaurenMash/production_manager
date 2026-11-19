@@ -3,14 +3,13 @@ import type {
   AuthResponse,
   LoginRequest,
   RegisterTenantRequest,
-  User,
 } from '../types/auth.types';
 
 export const authApi = {
   login: (data: LoginRequest): Promise<AuthResponse> =>
       apiClient.post('/user-service/api/v1/auth/login', data).then((res) => res.data),
 
-  registerTenant: (data: RegisterTenantRequest): Promise<User> =>
+  registerTenant: (data: RegisterTenantRequest): Promise<AuthResponse> =>
       apiClient
           .post('/user-service/api/v1/auth/register-tenant', data)
           .then((res) => res.data),

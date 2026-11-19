@@ -1,0 +1,46 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'user-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['user-service-app:8081']
+        labels:
+          application: 'user-service'
+
+  - job_name: 'work-calendar'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['work-calendar-app:8082']
+        labels:
+          application: 'work-calendar'
+
+  - job_name: 'workstation'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['workstation-app:8083']
+        labels:
+          application: 'workstation'
+
+  - job_name: 'employee-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['employee-service-app:8084']
+        labels:
+          application: 'employee-service'
+
+  - job_name: 'test-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['test-service-app:8085']
+        labels:
+          application: 'test-service'
+
+  - job_name: 'api-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['api-gateway:8888']
+        labels:
+          application: 'api-gateway'

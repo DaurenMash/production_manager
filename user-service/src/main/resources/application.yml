@@ -50,6 +50,8 @@ logging:
     org.hibernate: WARN
     org.springframework.web: WARN
     liquibase: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{tenantId:-}] %logger{36} : %msg%n"
 
 
 springdoc:
@@ -68,7 +70,21 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: always
+  metrics:
+    tags:
+      application: user-service
+    distribution:
+      percentiles-histogram:
+        [http.server.requests]: true
+      slo:
+        [http.server.requests]: 100ms, 500ms, 1s, 2s, 5s
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+    url: ${PROMETHEUS_URL:http://prometheus:9090}
+

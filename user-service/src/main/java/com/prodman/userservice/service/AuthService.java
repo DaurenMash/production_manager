@@ -4,16 +4,23 @@ import com.prodman.userservice.dto.request.LoginRequest;
 import com.prodman.userservice.dto.request.RefreshTokenRequest;
 import com.prodman.userservice.dto.request.RegisterTenantRequest;
 import com.prodman.userservice.dto.response.AuthResponse;
-import com.prodman.userservice.dto.response.UserResponse;
 import com.prodman.userservice.exception.CustomException;
 import com.prodman.userservice.mapper.UserMapper;
-import com.prodman.userservice.model.*;
+import com.prodman.userservice.model.Role;
+import com.prodman.userservice.model.Tenant;
+import com.prodman.userservice.model.TenantPlan;
+import com.prodman.userservice.model.TenantStatus;
+import com.prodman.userservice.model.User;
+import com.prodman.userservice.model.UserRole;
 import com.prodman.userservice.repository.TenantRepository;
 import com.prodman.userservice.repository.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,13 +38,14 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final AuditService auditService;
 
     /**
      * Регистрация нового тенанта (клиента) и первого пользователя-администратора.
      * По умолчанию: status=TRIAL, plan=FREE, trial_ends_at = now + 30 дней.
      */
     @Transactional
-    public UserResponse registerTenant(RegisterTenantRequest req) {
+    public AuthResponse registerTenant(RegisterTenantRequest req) {
         if (tenantRepository.existsBySlug(req.getTenantSlug())) {
             throw new CustomException.Conflict("Tenant slug already exists: " + req.getTenantSlug());
         }
@@ -68,21 +76,56 @@ public class AuthService {
                 .build();
         user = userRepository.save(user);
 
-        return userMapper.toResponse(user);
+        List<String> roles = List.of(Role.ADMIN.name());
+        String tenantStatus = tenant.getStatus().name();
+
+        String accessToken = jwtService.generateToken(
+                user.getUsername(),
+                user.getId(),
+                roles,
+                tenant.getId(),
+                tenantStatus,
+                null
+        );
+
+        String refreshToken = jwtService.generateRefreshToken(
+                user.getUsername(),
+                user.getId(),
+                tenant.getId()
+        );
+
+        auditService.record(
+                tenant.getId(),
+                user.getId(),
+                user.getUsername(),
+                "CREATE_TENANT",
+                "tenant:" + tenant.getSlug(),
+                clientIp(),
+                "{\"tenantName\":\"" + tenant.getName().replace("\"", "\\\"") + "\"}"
+        );
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .userId(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(Role.ADMIN)
+                .tenantId(tenant.getId())
+                .tenantSlug(tenant.getSlug())
+                .tenantStatus(tenant.getStatus())
+                .tenantPlan(tenant.getPlan())
+                .departmentId(null)
+                .expiresIn(86400000L)
+                .build();
     }
 
-    /**
-     * Логин.
-     *  - Если slug не указан — ищем PLATFORM_ADMIN (tenant_id = null).
-     *  - Если slug указан — находим тенант, потом юзера по (tenantId, username).
-     */
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest req) {
         User user;
         Tenant tenant = null;
 
         if (req.getSlug() == null || req.getSlug().isBlank()) {
-            // платформенный админ
             user = userRepository.findByTenantIdIsNullAndUsername(req.getUsername())
                     .orElseThrow(() -> new CustomException.Unauthorized("Invalid credentials"));
         } else {
@@ -105,7 +148,6 @@ public class AuthService {
 
         String tenantStatus = tenant == null ? null : tenant.getStatus().name();
 
-        // Собираем все активные роли (основная + временные)
         List<String> activeRoles = new ArrayList<>();
         activeRoles.add(user.getRole().name());
         for (UserRole ur : user.getTempRoles()) {
@@ -119,6 +161,16 @@ public class AuthService {
 
         String refreshToken = jwtService.generateRefreshToken(
                 user.getUsername(), user.getId(), user.getTenantId());
+
+        auditService.record(
+                user.getTenantId(),
+                user.getId(),
+                user.getUsername(),
+                "LOGIN",
+                "user:" + user.getUsername(),
+                clientIp(),
+                null
+        );
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
@@ -159,7 +211,6 @@ public class AuthService {
 
         String tenantStatus = tenant == null ? null : tenant.getStatus().name();
 
-        // Собираем все активные роли (основная + временные)
         List<String> activeRoles = new ArrayList<>();
         activeRoles.add(user.getRole().name());
         for (UserRole ur : user.getTempRoles()) {
@@ -187,5 +238,15 @@ public class AuthService {
                 .departmentId(user.getDepartmentId())
                 .expiresIn(86400000L)
                 .build();
+    }
+
+    private String clientIp() {
+        ServletRequestAttributes attrs =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attrs == null) return null;
+        HttpServletRequest req = attrs.getRequest();
+        String xff = req.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
+        return req.getRemoteAddr();
     }
 }

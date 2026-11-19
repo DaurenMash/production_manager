@@ -1,6 +1,7 @@
 ﻿import { createBrowserRouter, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout/MainLayout';
 import Login from '../pages/Auth/Login';
+import Register from '../pages/Auth/Register';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import EmployeesList from '../pages/Employees/EmployeesList';
 import EmployeeDetail from '../pages/Employees/EmployeeDetail';
@@ -17,11 +18,17 @@ import ShiftPatternsList from '../pages/ShiftPatterns/ShiftPatternsList';
 import Reports from '../pages/Reports/Reports';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import PlatformDashboard from '../pages/Platform/PlatformDashboard';
+import PlatformLogs from '../pages/Platform/PlatformLogs';
+import PlatformMetrics from '../pages/Platform/PlatformMetrics';
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
+  },
+  {
+    path: '/register',
+    element: <Register />,
   },
   {
     path: '/',
@@ -32,6 +39,8 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: 'platform-dashboard', element: <PlatformDashboard /> },
+          { path: 'platform-logs', element: <PlatformLogs /> },
+          { path: 'platform-metrics', element: <PlatformMetrics /> },
           { path: 'dashboard', element: <Dashboard /> },
           { path: 'employees', element: <EmployeesList /> },
           { path: 'employees/:id', element: <EmployeeDetail /> },

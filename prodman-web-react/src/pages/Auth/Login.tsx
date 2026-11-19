@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, Alert } from 'antd';
 import { UserOutlined, LockOutlined, ApartmentOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../../store/auth.store';
@@ -29,7 +29,6 @@ const Login = () => {
       });
       const currentRole = useAuthStore.getState().user?.role;
       navigate(currentRole === 'PLATFORM_ADMIN' ? '/platform-dashboard' : '/dashboard');
-      navigate('/dashboard');
     } catch (err: any) {
       const msg = err?.response?.data?.message;
       setError(msg || 'Ошибка входа. Проверьте логин, пароль и организацию.');
@@ -118,6 +117,13 @@ const Login = () => {
               </Button>
             </Form.Item>
           </Form>
+
+          <div style={{ textAlign: 'center', color: '#888', fontSize: 13 }}>
+            Нет аккаунта?{' '}
+            <Link to="/register" style={{ color: '#2E8B57' }}>
+              Зарегистрировать организацию
+            </Link>
+          </div>
         </Card>
       </div>
   );

@@ -17,7 +17,7 @@ spring:
   liquibase:
     enabled: true
     change-log: classpath:/db/changelog/db.changelog-master.xml
-#    contexts: docker    # нет других контекстов. Запуск только через докер
+
 
 server:
   port: ${SERVER_PORT:8085}
@@ -47,7 +47,19 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: always
+  metrics:
+    tags:
+      application: test-service
+    distribution:
+      percentiles-histogram:
+        [http.server.requests]: true
+      slo:
+        [http.server.requests]: 100ms, 500ms, 1s, 2s, 5s
+  prometheus:
+    metrics:
+      export:
+        enabled: true

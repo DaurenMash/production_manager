@@ -4,7 +4,6 @@ import com.prodman.userservice.dto.request.LoginRequest;
 import com.prodman.userservice.dto.request.RefreshTokenRequest;
 import com.prodman.userservice.dto.request.RegisterTenantRequest;
 import com.prodman.userservice.dto.response.AuthResponse;
-import com.prodman.userservice.dto.response.UserResponse;
 import com.prodman.userservice.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +18,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register-tenant")
-    public ResponseEntity<UserResponse> registerTenant(@Valid @RequestBody RegisterTenantRequest req) {
+    public ResponseEntity<AuthResponse> registerTenant(@Valid @RequestBody RegisterTenantRequest req) {
         return ResponseEntity.ok(authService.registerTenant(req));
     }
 
