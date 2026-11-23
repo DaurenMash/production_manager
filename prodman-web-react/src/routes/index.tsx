@@ -20,6 +20,7 @@ import { ProtectedRoute } from '../components/ProtectedRoute';
 import PlatformDashboard from '../pages/Platform/PlatformDashboard';
 import PlatformLogs from '../pages/Platform/PlatformLogs';
 import PlatformMetrics from '../pages/Platform/PlatformMetrics';
+import DemoPage from '../pages/Demo/DemoPage';
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +30,10 @@ export const router = createBrowserRouter([
   {
     path: '/register',
     element: <Register />,
+  },
+  {
+    path: '/demo',
+    element: <DemoPage />,
   },
   {
     path: '/',

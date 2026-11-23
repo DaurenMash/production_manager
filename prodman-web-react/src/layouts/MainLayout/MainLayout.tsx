@@ -94,6 +94,15 @@ const MainLayout = () => {
     ];
   }
 
+  // VISITOR — демо-доступ: только календарь и отчёты (read-only на бэкенде)
+  if (currentRole === 'VISITOR') {
+    menuItems = [
+      { key: '/calendar', icon: <CalendarOutlined />, label: 'Календарь (демо)' },
+      { key: '/reports', icon: <BarChartOutlined />, label: 'Отчёты (демо)' },
+      { key: '/demo', icon: <ExperimentOutlined />, label: 'О платформе' },
+    ];
+  }
+
   // PLATFORM_ADMIN — только дашборд платформы (но при имперсонации видит меню тенанта)
   if (isPlatformAdmin) {
     menuItems = [

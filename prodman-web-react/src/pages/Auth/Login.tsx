@@ -28,7 +28,13 @@ const Login = () => {
         password: values.password,
       });
       const currentRole = useAuthStore.getState().user?.role;
-      navigate(currentRole === 'PLATFORM_ADMIN' ? '/platform-dashboard' : '/dashboard');
+      if (currentRole === 'PLATFORM_ADMIN') {
+        navigate('/platform-dashboard');
+      } else if (currentRole === 'VISITOR') {
+        navigate('/calendar');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.message;
       setError(msg || 'Ошибка входа. Проверьте логин, пароль и организацию.');
@@ -122,6 +128,11 @@ const Login = () => {
             Нет аккаунта?{' '}
             <Link to="/register" style={{ color: '#2E8B57' }}>
               Зарегистрировать организацию
+            </Link>
+          </div>
+          <div style={{ textAlign: 'center', color: '#888', fontSize: 13, marginTop: 8 }}>
+            <Link to="/demo" style={{ color: '#888' }}>
+              ← Посмотреть демо
             </Link>
           </div>
         </Card>
